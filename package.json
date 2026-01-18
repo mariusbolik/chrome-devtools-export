@@ -1,0 +1,14 @@
+{
+  "name": "devtools-request-exporter",
+  "version": "1.0.0",
+  "description": "Chrome extension to export HTTP requests from DevTools",
+  "type": "module",
+  "scripts": {
+    "build": "bun run build.ts",
+    "dev": "bun run build.ts --watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "typescript": "^5.7.3"
+  }
+}

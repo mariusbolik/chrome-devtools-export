@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Export</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Tabs -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="network">Network</button>
+      <button class="tab" data-tab="console">Console</button>
+      <button class="tab" data-tab="storage">Storage</button>
+    </nav>
+
+    <!-- Network Tab -->
+    <section id="network" class="panel active">
+      <div class="toolbar">
+        <button id="refreshNetwork" class="icon-btn" title="Refresh">
+          <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4a8 8 0 108 8h-2a6 6 0 11-1.76-4.24l-2.24 2.24h6v-6l-2.35 2.35z"/></svg>
+        </button>
+        <button id="clearNetwork" class="icon-btn" title="Clear">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+        <input type="text" id="networkFilter" class="filter" placeholder="Filter...">
+        <button id="exportAllNetwork" class="btn">Export All</button>
+      </div>
+      <div id="networkList" class="list"></div>
+    </section>
+
+    <!-- Console Tab -->
+    <section id="console" class="panel">
+      <div class="toolbar">
+        <button id="clearConsole" class="icon-btn" title="Clear">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+        <input type="text" id="consoleFilter" class="filter" placeholder="Filter...">
+        <div class="checkbox-group">
+          <label>
+            <input type="checkbox" id="consoleIncludeIframes" checked>
+            <span>Include iframes</span>
+          </label>
+        </div>
+        <button id="exportAllConsole" class="btn">Export All</button>
+      </div>
+      <div id="consoleList" class="list"></div>
+    </section>
+
+    <!-- Storage Tab -->
+    <section id="storage" class="panel">
+      <div class="toolbar">
+        <button id="refreshStorage" class="icon-btn" title="Refresh">
+          <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4a8 8 0 108 8h-2a6 6 0 11-1.76-4.24l-2.24 2.24h6v-6l-2.35 2.35z"/></svg>
+        </button>
+      </div>
+      <div class="storage-sections">
+        <details class="storage-section" open>
+          <summary>
+            <span>localStorage</span>
+            <button class="btn-sm export-btn" data-type="localStorage">Export</button>
+          </summary>
+          <div id="localStorageData" class="storage-data"></div>
+        </details>
+        <details class="storage-section">
+          <summary>
+            <span>sessionStorage</span>
+            <button class="btn-sm export-btn" data-type="sessionStorage">Export</button>
+          </summary>
+          <div id="sessionStorageData" class="storage-data"></div>
+        </details>
+        <details class="storage-section">
+          <summary>
+            <span>Cookies</span>
+            <button class="btn-sm export-btn" data-type="cookies">Export</button>
+          </summary>
+          <div id="cookiesData" class="storage-data"></div>
+        </details>
+        <details class="storage-section">
+          <summary>
+            <span>IndexedDB</span>
+            <button class="btn-sm export-btn" data-type="indexedDB">Export</button>
+          </summary>
+          <div id="indexedDBData" class="storage-data"></div>
+        </details>
+      </div>
+    </section>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+  </div>
+  <script src="panel.js"></script>
+</body>
+</html>
