@@ -4,9 +4,11 @@
 
 <h1 align="center">Chrome DevTools Export</h1>
 
-Export Network requests, Console logs, and Storage data directly from a custom Chrome DevTools panel.
+<p align="center">Export Network requests, Console logs, and Storage data directly from a custom Chrome DevTools panel.</p>
 
-![Screenshot](./assets/screenshots/screenshot-1.png)
+<p align="center">
+  <img src="./assets/screenshots/screenshot-1.png" width="400" alt="Screenshot" />
+</p>
 
 ## Features
 
