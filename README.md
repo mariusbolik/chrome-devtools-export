@@ -6,7 +6,7 @@
 
 Export Network requests, Console logs, and Storage data directly from a custom Chrome DevTools panel.
 
-![Screenshot](screenshot-1.png)
+![Screenshot](./assets/screenshots/screenshot-1.png)
 
 ## Features
 
