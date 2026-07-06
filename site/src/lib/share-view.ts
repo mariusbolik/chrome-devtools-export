@@ -1,4 +1,16 @@
-import type { ShareSnapshot } from "../../../shared/snapshot";
+import type { ShareSnapshot, StorageSnapshot } from "../../../shared/snapshot";
+
+export interface StorageViewRow {
+  key: string;
+  value: string;
+  valueType: "array" | "boolean" | "null" | "number" | "object" | "string";
+}
+
+export interface StorageViewSection {
+  id: keyof StorageSnapshot;
+  label: string;
+  rows: StorageViewRow[];
+}
 
 export interface ShareViewModel {
   id: string;
@@ -26,16 +38,27 @@ export interface ShareViewModel {
     redactions: number;
     truncations: number;
   };
+  storage: {
+    sections: StorageViewSection[];
+    totalRows: number;
+  };
 }
 
 const BROWSER_ICON_BASE = "https://cdn.jsdelivr.net/gh/alrra/browser-logos@main/src";
 const FLAG_BASE = "https://cdn.jsdelivr.net/npm/flagpack@1.0.5/flags/1x1";
+const STORAGE_SECTIONS: Array<{ id: keyof StorageSnapshot; label: string }> = [
+  { id: "localStorage", label: "Local Storage" },
+  { id: "sessionStorage", label: "Session Storage" },
+  { id: "cookies", label: "Cookies" },
+  { id: "indexedDB", label: "IndexedDB" },
+];
 
 export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
   const browserName = readString(snapshot.environment.browser, ["browser", "name"]);
   const browserVersion = readString(snapshot.environment.browser, ["browser", "version"]);
   const country = String(snapshot.environment.cloudflare?.country ?? "unknown").toUpperCase();
   const city = String(snapshot.environment.cloudflare?.city ?? "");
+  const storageSections = buildStorageSections(snapshot.storage);
 
   return {
     id: snapshot.id,
@@ -63,7 +86,55 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
       redactions: snapshot.redactions.length,
       truncations: snapshot.truncations.length,
     },
+    storage: {
+      sections: storageSections,
+      totalRows: storageSections.reduce((total, section) => total + section.rows.length, 0),
+    },
   };
+}
+
+function buildStorageSections(storage: StorageSnapshot): StorageViewSection[] {
+  return STORAGE_SECTIONS.map((section) => {
+    const values = storage[section.id] ?? {};
+    return {
+      ...section,
+      rows: Object.keys(values)
+        .sort((a, b) => a.localeCompare(b))
+        .map((key) => ({
+          key,
+          value: formatStorageValue(values[key]),
+          valueType: storageValueType(values[key]),
+        })),
+    };
+  });
+}
+
+function formatStorageValue(value: unknown): string {
+  if (value === null) return "null";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
+  if (Array.isArray(value)) return value.length === 0 ? "[]" : value.map(formatStorageValue).join(", ");
+
+  if (typeof value === "object" && value) {
+    const metadata = value as Record<string, unknown>;
+    const version = metadata.version !== undefined ? `version ${formatStorageValue(metadata.version)}` : "";
+    const stores = Array.isArray(metadata.stores) ? `stores: ${metadata.stores.map(formatStorageValue).join(", ")}` : "";
+    if (version || stores) return [version, stores].filter(Boolean).join(", ");
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function storageValueType(value: unknown): StorageViewRow["valueType"] {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  const type = typeof value;
+  if (type === "boolean" || type === "number" || type === "string") return type;
+  return "object";
 }
 
 function getDomain(urlValue: string): string {

@@ -86,4 +86,46 @@ describe("share view model", () => {
     expect(model.url).toBe("javascript:alert(1)");
     expect(model.safeUrl).toBe("#");
   });
+
+  test("builds storage sections for key-value UI rows", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com",
+      storage: {
+        localStorage: {
+          theme: "dark",
+          enabled: true,
+        },
+        sessionStorage: {},
+        cookies: {
+          sid: "[REDACTED]",
+        },
+        indexedDB: {
+          app: {
+            version: 2,
+            stores: ["users", "settings"],
+          },
+        },
+      },
+    });
+
+    const model = buildShareViewModel(snapshot);
+
+    expect(model.storage.totalRows).toBe(4);
+    expect(model.storage.sections.map((section) => [section.id, section.label, section.rows.length])).toEqual([
+      ["localStorage", "Local Storage", 2],
+      ["sessionStorage", "Session Storage", 0],
+      ["cookies", "Cookies", 1],
+      ["indexedDB", "IndexedDB", 1],
+    ]);
+    expect(model.storage.sections[0].rows).toEqual([
+      { key: "enabled", value: "true", valueType: "boolean" },
+      { key: "theme", value: "dark", valueType: "string" },
+    ]);
+    expect(model.storage.sections[3].rows[0]).toEqual({
+      key: "app",
+      value: "version 2, stores: users, settings",
+      valueType: "object",
+    });
+  });
 });

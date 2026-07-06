@@ -158,10 +158,28 @@ const pathFor = (url: string) => {
             </div>
 
             <div class="panel storage-panel">
-              {Object.entries(snapshot.storage).map(([name, values]) => (
-                <details open={name === "localStorage"}>
-                  <summary>{name}</summary>
-                  <pre>{JSON.stringify(values, null, 2)}</pre>
+              {model.storage.sections.map((section) => (
+                <details class="storage-bucket" open={section.rows.length > 0}>
+                  <summary>
+                    <span>{section.label}</span>
+                    <em>{section.rows.length} {section.rows.length === 1 ? "entry" : "entries"}</em>
+                  </summary>
+                  {section.rows.length > 0 ? (
+                    <div class="storage-table" role="table" aria-label={`${section.label} entries`}>
+                      <div class="storage-row storage-header" role="row">
+                        <span role="columnheader">Key</span>
+                        <span role="columnheader">Value</span>
+                      </div>
+                      {section.rows.map((row) => (
+                        <div class="storage-row" role="row">
+                          <span class="storage-key" role="cell">{row.key}</span>
+                          <code class={`storage-value ${row.valueType}`} role="cell">{row.value}</code>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p class="empty">No entries captured</p>
+                  )}
                 </details>
               ))}
             </div>
@@ -513,9 +531,77 @@ const pathFor = (url: string) => {
   }
 
   summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     padding: 8px 12px;
     background: var(--bg-light);
     cursor: pointer;
+  }
+
+  summary em {
+    color: var(--text-dim);
+    font-style: normal;
+  }
+
+  .storage-table {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.34fr) minmax(0, 1fr);
+  }
+
+  .storage-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    border-top: 1px solid var(--border);
+  }
+
+  .storage-header {
+    min-height: 28px;
+    align-items: center;
+    background: var(--bg-hover);
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .storage-row span,
+  .storage-value {
+    min-width: 0;
+    padding: 7px 10px;
+  }
+
+  .storage-key,
+  .storage-value {
+    font-family: "SF Mono", Monaco, monospace;
+    overflow-wrap: anywhere;
+  }
+
+  .storage-key {
+    color: var(--yellow);
+    border-right: 1px solid var(--border);
+  }
+
+  .storage-value {
+    display: block;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .storage-value.array,
+  .storage-value.object {
+    color: var(--green);
+  }
+
+  .storage-value.boolean,
+  .storage-value.number {
+    color: var(--blue);
+  }
+
+  .storage-value.null {
+    color: var(--text-dim);
   }
 
   pre {
@@ -566,6 +652,11 @@ const pathFor = (url: string) => {
 
     .row span:last-child {
       display: none;
+    }
+
+    .storage-table,
+    .storage-row {
+      grid-template-columns: minmax(110px, 0.4fr) minmax(0, 1fr);
     }
   }
 </style>
