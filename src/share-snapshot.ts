@@ -257,7 +257,7 @@ function evalInInspectedWindow<T>(expression: string): Promise<T> {
   });
 }
 
-async function captureCdpSnapshot(tabId: number): Promise<CdpSnapshot> {
+export async function captureCdpSnapshot(tabId: number): Promise<CdpSnapshot> {
   const target: chrome.debugger.Debuggee = { tabId };
   await attachDebugger(target);
 

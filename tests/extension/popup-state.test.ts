@@ -7,7 +7,7 @@ describe("popup state", () => {
       status: "idle",
       buttonDisabled: false,
       buttonText: "Share Bug Report",
-      message: "Capture from the open DevTools Export panel.",
+      message: "Capture and upload the active tab.",
       shareUrl: null,
     });
   });
@@ -37,17 +37,17 @@ describe("popup state", () => {
     });
   });
 
-  test("explains when the DevTools panel is not connected", () => {
+  test("shows capture errors without asking for DevTools", () => {
     expect(
       reducePopupState(createInitialPopupState(), {
         type: "error",
-        message: "Open DevTools and select the Export panel first.",
+        message: "Could not capture this tab.",
       })
     ).toEqual({
       status: "error",
       buttonDisabled: false,
       buttonText: "Share Bug Report",
-      message: "Open DevTools and select the Export panel first.",
+      message: "Could not capture this tab.",
       shareUrl: null,
     });
   });

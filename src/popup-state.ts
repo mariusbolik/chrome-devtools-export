@@ -19,7 +19,7 @@ export function createInitialPopupState(): PopupState {
     status: "idle",
     buttonDisabled: false,
     buttonText: "Share Bug Report",
-    message: "Capture from the open DevTools Export panel.",
+    message: "Capture and upload the active tab.",
     shareUrl: null,
   };
 }

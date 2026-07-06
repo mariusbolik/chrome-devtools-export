@@ -71,6 +71,8 @@ export interface CdpSnapshot {
   performanceMetrics?: unknown;
   cookies?: unknown;
   target?: unknown;
+  pageAssets?: unknown;
+  pageResources?: unknown;
   errors?: string[];
 }
 

@@ -1,3 +1,12 @@
+import { buildShareId, type CdpSnapshot, type InstalledExtensionSnapshot } from "../shared/snapshot";
+import { buildDirectSnapshotInput, type PageCapture } from "./direct-share";
+import {
+  captureCdpSnapshot,
+  normalizeInstalledExtensions,
+  prepareSnapshotForUpload,
+  uploadSnapshot,
+} from "./share-snapshot";
+
 // Background service worker - relays console logs between content scripts and devtools panels
 
 interface ConsoleLogData {
@@ -32,7 +41,7 @@ type ShareResponseMessage =
 // Handle messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "share-active-tab") {
-    requestShareFromPanel(message.tabId as number)
+    shareActiveTab(message.tabId as number)
       .then(sendResponse)
       .catch((error) => {
         sendResponse({
@@ -76,6 +85,125 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   });
 });
+
+async function shareActiveTab(tabId: number): Promise<ShareResponseMessage> {
+  try {
+    const [page, installedExtensions, cdp] = await Promise.all([
+      collectPageCapture(tabId),
+      collectInstalledExtensions(),
+      captureCdpSnapshot(tabId).catch((error): CdpSnapshot => ({
+        errors: [error instanceof Error ? error.message : "CDP capture failed"],
+      })),
+    ]);
+
+    const prepared = prepareSnapshotForUpload({
+      ...buildDirectSnapshotInput({
+        id: buildShareId(),
+        page,
+        extension: collectExtensionMetadata(),
+        environment: collectRuntimeEnvironment(page),
+        installedExtensions,
+        consoleLogs: tabLogs[tabId] ?? [],
+        cdp,
+      }),
+    });
+    const share = await uploadSnapshot(prepared.snapshot);
+
+    return {
+      ok: true,
+      url: share.url,
+      expiresAt: share.expiresAt,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not capture this tab.",
+    };
+  }
+}
+
+async function collectPageCapture(tabId: number): Promise<PageCapture> {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { type: "collect-page-snapshot" }) as PageCapture | { error?: string };
+    if ("error" in response && response.error) throw new Error(response.error);
+    return response as PageCapture;
+  } catch {
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab.url || !/^https?:\/\//.test(tab.url)) {
+      throw new Error("This page cannot be captured. Try an http or https tab.");
+    }
+    return {
+      url: tab.url,
+      title: tab.title,
+      referrer: "",
+      userAgent: navigator.userAgent,
+      storage: {
+        localStorage: {},
+        sessionStorage: {},
+        cookies: {},
+        indexedDB: {},
+      },
+      resources: [],
+      assets: {
+        images: [],
+        scripts: [],
+        stylesheets: [],
+      },
+    };
+  }
+}
+
+async function collectInstalledExtensions(): Promise<InstalledExtensionSnapshot[]> {
+  if (!chrome.management?.getAll) return [];
+  return new Promise((resolve) => {
+    chrome.management.getAll((extensions) => {
+      if (chrome.runtime.lastError) {
+        resolve([]);
+        return;
+      }
+      resolve(normalizeInstalledExtensions(extensions));
+    });
+  });
+}
+
+function collectExtensionMetadata() {
+  const manifest = chrome.runtime.getManifest();
+  return {
+    id: chrome.runtime.id,
+    version: manifest.version,
+  };
+}
+
+function collectRuntimeEnvironment(page: PageCapture) {
+  const nav = navigator as Navigator & {
+    userAgentData?: {
+      brands?: Array<{ brand: string; version: string }>;
+      mobile?: boolean;
+      platform?: string;
+    };
+    deviceMemory?: number;
+  };
+
+  return {
+    userAgent: page.userAgent || navigator.userAgent,
+    language: navigator.language,
+    languages: [...navigator.languages],
+    platform: nav.userAgentData?.platform || navigator.platform,
+    vendor: navigator.vendor,
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    deviceMemory: nav.deviceMemory,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    browser: {
+      userAgentData: nav.userAgentData
+        ? {
+            brands: nav.userAgentData.brands,
+            mobile: nav.userAgentData.mobile,
+            platform: nav.userAgentData.platform,
+          }
+        : undefined,
+    },
+  };
+}
 
 async function requestShareFromPanel(tabId: number): Promise<ShareResponseMessage> {
   const ports = tabConnections[tabId] ?? [];
