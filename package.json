@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "bun run build.ts",
-    "dev": "bun run build.ts --watch"
+    "dev": "bun run build.ts --watch",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",

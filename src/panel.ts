@@ -1,4 +1,5 @@
 import type { ConsoleLogEntry, NetworkRequest } from "./types";
+import { shareDevtoolsSnapshot } from "./share-snapshot";
 
 // State
 let networkRequests: NetworkRequest[] = [];
@@ -80,6 +81,54 @@ function initTabs() {
       tab.classList.add("active");
       $(tab.getAttribute("data-tab")!).classList.add("active");
     });
+  });
+}
+
+// ============ SHARE ============
+function initShare() {
+  const modal = $("shareModal");
+  const status = $("shareStatus");
+  const result = $("shareResult") as HTMLAnchorElement;
+  const includeSensitive = $("shareIncludeSensitive") as HTMLInputElement;
+  const confirm = $("shareConfirm") as HTMLButtonElement;
+
+  const setOpen = (open: boolean) => {
+    modal.hidden = !open;
+    if (open) {
+      status.textContent = "Ready to capture";
+      result.classList.remove("show");
+      result.removeAttribute("href");
+      result.textContent = "";
+      includeSensitive.checked = false;
+      confirm.disabled = false;
+    }
+  };
+
+  $("shareSnapshot").addEventListener("click", () => setOpen(true));
+  $("shareCancel").addEventListener("click", () => setOpen(false));
+  modal.querySelector(".modal-backdrop")?.addEventListener("click", () => setOpen(false));
+
+  confirm.addEventListener("click", async () => {
+    confirm.disabled = true;
+    result.classList.remove("show");
+    status.textContent = "Capturing DevTools snapshot...";
+
+    try {
+      const share = await shareDevtoolsSnapshot({
+        inspectedTabId,
+        networkRequests,
+        consoleLogs,
+        includeSensitive: includeSensitive.checked,
+      });
+      result.href = share.url;
+      result.textContent = share.url;
+      result.classList.add("show");
+      status.textContent = `Shared until ${new Date(share.expiresAt).toLocaleString()}`;
+      await copy(share.url);
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Share failed";
+      confirm.disabled = false;
+    }
   });
 }
 
@@ -412,6 +461,7 @@ function exportStorage(type: string) {
 
 // ============ INIT ============
 initTabs();
+initShare();
 initConsole();
 initNetwork();
 initStorage();

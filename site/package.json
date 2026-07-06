@@ -1,0 +1,25 @@
+{
+  "name": "devtools-export-share-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "check": "astro check",
+    "test": "bun test",
+    "deploy": "wrangler deploy",
+    "deploy:dry-run": "wrangler deploy --dry-run"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "14.1.1",
+    "astro": "7.0.6",
+    "ua-parser-js": "2.0.10"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@cloudflare/workers-types": "4.20251223.0",
+    "typescript": "^5.9.3",
+    "wrangler": "4.107.0"
+  }
+}

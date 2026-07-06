@@ -1,0 +1,561 @@
+---
+import { env } from "cloudflare:workers";
+import { loadSharedSnapshot, type ShareApiEnv } from "../../../lib/share-api";
+import { buildShareViewModel } from "../../../lib/share-view";
+
+export const prerender = false;
+
+const snapshot = await loadSharedSnapshot(Astro.params.id ?? "", env as unknown as ShareApiEnv);
+if (!snapshot) {
+  Astro.response.status = 404;
+}
+
+const model = snapshot ? buildShareViewModel(snapshot) : null;
+
+const formatDate = (value: string | undefined) => {
+  if (!value) return "unknown";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+};
+
+const pathFor = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{model ? `${model.domain} - DevTools Export` : "Snapshot not found"}</title>
+  </head>
+  <body>
+    {
+      !snapshot || !model ? (
+        <main class="not-found">
+          <h1>Snapshot not found</h1>
+          <p>The share link is invalid or has expired.</p>
+        </main>
+      ) : (
+        <main class="app-shell">
+          <header class="topbar">
+            <div class="brand">
+              <img src="/assets/icon/icon.png" alt="" />
+              <div>
+                <h1>{model.title}</h1>
+                <a href={model.safeUrl}>{model.url}</a>
+              </div>
+            </div>
+            <div class="meta-chips">
+              <span class="chip strong">#{model.id}</span>
+              <span class="chip">
+                {model.browser.iconUrl && <img src={model.browser.iconUrl} alt="" />}
+                {model.browser.label}
+              </span>
+              <span class="chip">
+                {model.location.flagUrl && <img src={model.location.flagUrl} alt="" />}
+                {model.location.label}
+              </span>
+              <a class="chip link" href={`/api/share/${model.id}.json`}>JSON</a>
+            </div>
+          </header>
+
+          <section class="summary-grid">
+            <div class="metric">
+              <span>Network</span>
+              <strong>{model.counts.network}</strong>
+              <em>{model.counts.networkErrors} errors</em>
+            </div>
+            <div class="metric">
+              <span>Console</span>
+              <strong>{model.counts.console}</strong>
+              <em>{model.counts.consoleErrors} errors</em>
+            </div>
+            <div class="metric">
+              <span>Storage</span>
+              <strong>{model.counts.storageBuckets}</strong>
+              <em>buckets</em>
+            </div>
+            <div class="metric">
+              <span>Extensions</span>
+              <strong>{model.counts.installedExtensions}</strong>
+              <em>installed</em>
+            </div>
+            <div class="metric warn">
+              <span>Redactions</span>
+              <strong>{model.counts.redactions}</strong>
+              <em>{model.counts.truncations} trims</em>
+            </div>
+          </section>
+
+          <section class="details">
+            <input checked id="tab-summary" name="tabs" type="radio" />
+            <input id="tab-network" name="tabs" type="radio" />
+            <input id="tab-console" name="tabs" type="radio" />
+            <input id="tab-storage" name="tabs" type="radio" />
+            <input id="tab-cdp" name="tabs" type="radio" />
+            <input id="tab-environment" name="tabs" type="radio" />
+            <input id="tab-json" name="tabs" type="radio" />
+
+            <nav class="tabs" aria-label="Snapshot sections">
+              <label for="tab-summary">Summary</label>
+              <label for="tab-network">Network</label>
+              <label for="tab-console">Console</label>
+              <label for="tab-storage">Storage</label>
+              <label for="tab-cdp">DOM/CDP</label>
+              <label for="tab-environment">Environment</label>
+              <label for="tab-json">Raw JSON</label>
+            </nav>
+
+            <div class="panel summary-panel">
+              <dl class="key-values">
+                <div><dt>Captured</dt><dd>{formatDate(model.createdAt)}</dd></div>
+                <div><dt>Expires</dt><dd>{formatDate(model.expiresAt)}</dd></div>
+                <div><dt>Domain</dt><dd>{model.domain}</dd></div>
+                <div><dt>Schema</dt><dd>{snapshot.schemaVersion}</dd></div>
+              </dl>
+              <h2>Notices</h2>
+              <div class="notice-list">
+                {[...snapshot.redactions, ...snapshot.truncations].map((notice) => (
+                  <div class="notice-row">
+                    <span>{notice.path}</span>
+                    <em>{notice.reason}</em>
+                  </div>
+                ))}
+                {snapshot.redactions.length + snapshot.truncations.length === 0 && <p class="empty">No redactions or truncations recorded</p>}
+              </div>
+            </div>
+
+            <div class="panel network-panel">
+              <div class="row header-row"><span>Method</span><span>Status</span><span>Path</span><span>Time</span></div>
+              {snapshot.network.map((request) => (
+                <div class="row">
+                  <span class={`method ${request.method.toLowerCase()}`}>{request.method}</span>
+                  <span class={request.status >= 400 ? "status error" : request.status >= 300 ? "status redirect" : "status ok"}>{request.status}</span>
+                  <span class="path">{pathFor(request.url)}</span>
+                  <span>{request.time}ms</span>
+                </div>
+              ))}
+              {snapshot.network.length === 0 && <p class="empty">No requests captured</p>}
+            </div>
+
+            <div class="panel console-panel">
+              {snapshot.console.map((entry) => (
+                <div class={`log-row ${entry.type}`}>
+                  <span>{entry.type}</span>
+                  <pre>{entry.text}</pre>
+                </div>
+              ))}
+              {snapshot.console.length === 0 && <p class="empty">No console logs captured</p>}
+            </div>
+
+            <div class="panel storage-panel">
+              {Object.entries(snapshot.storage).map(([name, values]) => (
+                <details open={name === "localStorage"}>
+                  <summary>{name}</summary>
+                  <pre>{JSON.stringify(values, null, 2)}</pre>
+                </details>
+              ))}
+            </div>
+
+            <div class="panel cdp-panel">
+              {snapshot.cdp.screenshotDataUrl && String(snapshot.cdp.screenshotDataUrl).startsWith("data:image/") && (
+                <img class="screenshot" src={snapshot.cdp.screenshotDataUrl} alt="Captured page screenshot" />
+              )}
+              <pre>{JSON.stringify(snapshot.cdp, null, 2)}</pre>
+            </div>
+
+            <div class="panel environment-panel">
+              <pre>{JSON.stringify({ environment: snapshot.environment, extension: snapshot.extension, installedExtensions: snapshot.installedExtensions }, null, 2)}</pre>
+            </div>
+
+            <div class="panel json-panel">
+              <pre>{JSON.stringify(snapshot, null, 2)}</pre>
+            </div>
+          </section>
+        </main>
+      )
+    }
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #1e1e1e;
+    --bg-light: #252526;
+    --bg-hover: #2a2d2e;
+    --border: #3c3c3c;
+    --text: #cccccc;
+    --text-dim: #808080;
+    --accent: #0e639c;
+    --accent-hover: #1177bb;
+    --green: #4ec9b0;
+    --yellow: #dcdcaa;
+    --red: #f48771;
+    --blue: #569cd6;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+
+  .app-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 12px;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand img {
+    width: 32px;
+    height: 32px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .brand a {
+    display: block;
+    max-width: min(72vw, 900px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-dim);
+  }
+
+  .meta-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 24px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .chip img {
+    width: 14px;
+    height: 14px;
+  }
+
+  .chip.strong {
+    color: var(--green);
+    font-family: "SF Mono", Monaco, monospace;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .metric {
+    min-height: 74px;
+    padding: 10px 12px;
+    border-right: 1px solid var(--border);
+  }
+
+  .metric span,
+  .metric em {
+    display: block;
+    color: var(--text-dim);
+    font-style: normal;
+  }
+
+  .metric strong {
+    display: block;
+    margin: 2px 0;
+    color: var(--text);
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  .metric.warn strong {
+    color: var(--yellow);
+  }
+
+  .details {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .details > input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .tabs {
+    display: flex;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .tabs label {
+    padding: 8px 16px;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  #tab-summary:checked ~ .tabs label[for="tab-summary"],
+  #tab-network:checked ~ .tabs label[for="tab-network"],
+  #tab-console:checked ~ .tabs label[for="tab-console"],
+  #tab-storage:checked ~ .tabs label[for="tab-storage"],
+  #tab-cdp:checked ~ .tabs label[for="tab-cdp"],
+  #tab-environment:checked ~ .tabs label[for="tab-environment"],
+  #tab-json:checked ~ .tabs label[for="tab-json"] {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+
+  .panel {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  #tab-summary:checked ~ .summary-panel,
+  #tab-network:checked ~ .network-panel,
+  #tab-console:checked ~ .console-panel,
+  #tab-storage:checked ~ .storage-panel,
+  #tab-cdp:checked ~ .cdp-panel,
+  #tab-environment:checked ~ .environment-panel,
+  #tab-json:checked ~ .json-panel {
+    display: block;
+  }
+
+  .key-values {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .key-values div {
+    padding: 10px 12px;
+    border-right: 1px solid var(--border);
+  }
+
+  dt {
+    color: var(--text-dim);
+  }
+
+  dd {
+    margin: 2px 0 0;
+  }
+
+  h2 {
+    margin: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .notice-row,
+  .row,
+  .log-row {
+    display: grid;
+    gap: 8px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .notice-row {
+    grid-template-columns: minmax(220px, 0.4fr) 1fr;
+  }
+
+  .notice-row span,
+  .notice-row em,
+  pre {
+    font-family: "SF Mono", Monaco, monospace;
+  }
+
+  .notice-row em {
+    color: var(--text-dim);
+    font-style: normal;
+  }
+
+  .row {
+    grid-template-columns: 72px 56px minmax(180px, 1fr) 70px;
+    align-items: center;
+  }
+
+  .header-row {
+    position: sticky;
+    top: 0;
+    background: var(--bg-light);
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .method,
+  .status {
+    font-weight: 600;
+    font-size: 10px;
+  }
+
+  .method.get,
+  .status.ok {
+    color: var(--green);
+  }
+
+  .method.post,
+  .method.patch {
+    color: var(--blue);
+  }
+
+  .method.put,
+  .status.redirect {
+    color: var(--yellow);
+  }
+
+  .method.delete,
+  .status.error {
+    color: var(--red);
+  }
+
+  .path {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .log-row {
+    grid-template-columns: 56px minmax(0, 1fr);
+    align-items: start;
+    font-family: "SF Mono", Monaco, monospace;
+  }
+
+  .log-row span {
+    color: var(--text-dim);
+    font-size: 9px;
+    text-transform: uppercase;
+  }
+
+  .log-row.warn {
+    border-left: 2px solid var(--yellow);
+    background: rgba(220, 220, 170, 0.05);
+  }
+
+  .log-row.error {
+    border-left: 2px solid var(--red);
+    background: rgba(244, 135, 113, 0.05);
+  }
+
+  details {
+    border-bottom: 1px solid var(--border);
+  }
+
+  summary {
+    padding: 8px 12px;
+    background: var(--bg-light);
+    cursor: pointer;
+  }
+
+  pre {
+    margin: 0;
+    padding: 10px 12px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text);
+  }
+
+  .screenshot {
+    display: block;
+    max-width: min(100%, 960px);
+    margin: 12px;
+    border: 1px solid var(--border);
+  }
+
+  .empty,
+  .not-found {
+    color: var(--text-dim);
+    padding: 20px;
+  }
+
+  .not-found h1 {
+    color: var(--text);
+    font-size: 18px;
+  }
+
+  @media (max-width: 760px) {
+    .topbar {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .meta-chips {
+      justify-content: flex-start;
+    }
+
+    .summary-grid,
+    .key-values {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .row {
+      grid-template-columns: 56px 44px minmax(120px, 1fr);
+    }
+
+    .row span:last-child {
+      display: none;
+    }
+  }
+</style>
