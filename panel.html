@@ -12,6 +12,9 @@
       <button class="tab active" data-tab="network">Network</button>
       <button class="tab" data-tab="console">Console</button>
       <button class="tab" data-tab="storage">Storage</button>
+      <div class="tab-actions">
+        <button id="shareSnapshot" class="btn">Share Snapshot</button>
+      </div>
     </nav>
 
     <!-- Network Tab -->
@@ -88,6 +91,29 @@
 
     <!-- Toast -->
     <div id="toast" class="toast"></div>
+
+    <!-- Share Modal -->
+    <div id="shareModal" class="modal" hidden>
+      <div class="modal-backdrop"></div>
+      <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+        <header>
+          <h1 id="shareTitle">Share Snapshot</h1>
+          <button id="shareCancel" class="icon-btn" title="Close">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </header>
+        <p class="modal-copy">Creates a 30-day unlisted debugging link with network, console, storage, browser, installed extension, and CDP data.</p>
+        <label class="toggle-row">
+          <input type="checkbox" id="shareIncludeSensitive">
+          <span>Include raw sensitive fields</span>
+        </label>
+        <div id="shareStatus" class="share-status">Ready to capture</div>
+        <a id="shareResult" class="share-result" target="_blank" rel="noreferrer"></a>
+        <footer>
+          <button id="shareConfirm" class="btn">Capture & Share</button>
+        </footer>
+      </section>
+    </div>
   </div>
   <script src="panel.js"></script>
 </body>

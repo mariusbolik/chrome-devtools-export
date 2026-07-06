@@ -1,0 +1,14 @@
+name = "devtools-export-share"
+account_id = "f525f4afbff19582070c39b3ed311771"
+compatibility_date = "2026-07-06"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+
+[vars]
+PUBLIC_BASE_URL = "https://devtools-export-share.mcb-software.workers.dev"
+
+[[r2_buckets]]
+binding = "SNAPSHOTS"
+bucket_name = "devtools-export-shares"
