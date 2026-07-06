@@ -74,6 +74,41 @@ describe("shared snapshot utilities", () => {
     expect(result.redactions.length).toBeGreaterThanOrEqual(12);
   });
 
+  test("redactSnapshot can preserve screenshots without preserving other sensitive fields", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com/app?token=secret-token",
+      network: [
+        {
+          id: 1,
+          method: "GET",
+          url: "https://api.example.com/users?api_key=abc123",
+          status: 200,
+          time: 10,
+          requestHeaders: { Authorization: "Bearer top-secret" },
+          responseHeaders: {},
+          requestBody: null,
+          responseBody: "secret-body",
+        },
+      ],
+      cdp: {
+        screenshotDataUrl: "data:image/png;base64,screenshot-image",
+        domSnapshot: { strings: ["password=dom-secret"] },
+        cookies: [{ name: "sid", value: "cdp-secret" }],
+      },
+    });
+
+    const result = redactSnapshot(snapshot, { includeScreenshot: true });
+    const serialized = JSON.stringify(result.snapshot);
+
+    expect(result.snapshot.cdp.screenshotDataUrl).toBe("data:image/png;base64,screenshot-image");
+    expect(serialized).not.toContain("top-secret");
+    expect(serialized).not.toContain("abc123");
+    expect(serialized).not.toContain("secret-body");
+    expect(serialized).not.toContain("dom-secret");
+    expect(serialized).not.toContain("cdp-secret");
+  });
+
   test("trimSnapshotToBytes trims large bodies before dropping useful summary data", () => {
     const snapshot = createSnapshot({
       id: "AbC234xy",

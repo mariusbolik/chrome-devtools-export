@@ -32,7 +32,7 @@ const DEFAULT_MAX_BYTES = 10 * 1024 * 1024;
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "POST, OPTIONS, GET",
-  "access-control-allow-headers": "content-type, x-devtools-export-schema, x-devtools-export-include-sensitive",
+  "access-control-allow-headers": "content-type, x-devtools-export-schema, x-devtools-export-include-sensitive, x-devtools-export-include-screenshot",
   "access-control-max-age": "86400",
 };
 
@@ -90,7 +90,8 @@ export async function handleCreateShare(
     userAgent: context.userAgent ?? request.headers.get("user-agent"),
   });
   const includeSensitive = request.headers.get("x-devtools-export-include-sensitive") === "true";
-  const redacted = redactSnapshot(enriched, includeSensitive).snapshot;
+  const includeScreenshot = request.headers.get("x-devtools-export-include-screenshot") === "true";
+  const redacted = redactSnapshot(enriched, { includeSensitive, includeScreenshot }).snapshot;
 
   let trimmed: ShareSnapshot;
   try {

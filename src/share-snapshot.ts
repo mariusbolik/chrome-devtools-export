@@ -18,6 +18,7 @@ export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 export interface PrepareOptions {
   includeSensitive?: boolean;
+  includeScreenshot?: boolean;
   maxBytes?: number;
 }
 
@@ -32,6 +33,15 @@ export interface ShareResponse {
   id: string;
   url: string;
   expiresAt: string;
+}
+
+export interface UploadOptions {
+  includeSensitive?: boolean;
+  includeScreenshot?: boolean;
+}
+
+export interface CaptureCdpOptions {
+  includeScreenshot?: boolean;
 }
 
 export function normalizeInstalledExtensions(
@@ -54,7 +64,10 @@ export function prepareSnapshotForUpload(
   options: PrepareOptions = {}
 ): { snapshot: ShareSnapshot } {
   const snapshot = createSnapshot(input);
-  const redacted = redactSnapshot(snapshot, options.includeSensitive === true).snapshot;
+  const redacted = redactSnapshot(snapshot, {
+    includeSensitive: options.includeSensitive === true,
+    includeScreenshot: options.includeScreenshot === true,
+  }).snapshot;
   const trimmed = trimSnapshotToBytes(redacted, options.maxBytes ?? MAX_UPLOAD_BYTES).snapshot;
   return { snapshot: trimmed };
 }
@@ -84,20 +97,24 @@ export async function shareDevtoolsSnapshot(options: ShareSnapshotOptions): Prom
     options
   );
 
-  return uploadSnapshot(prepared.snapshot, options.uploadEndpoint ?? SHARE_ENDPOINT, options.includeSensitive === true);
+  return uploadSnapshot(prepared.snapshot, options.uploadEndpoint ?? SHARE_ENDPOINT, {
+    includeSensitive: options.includeSensitive === true,
+    includeScreenshot: options.includeScreenshot === true,
+  });
 }
 
 export async function uploadSnapshot(
   snapshot: ShareSnapshot,
   endpoint = SHARE_ENDPOINT,
-  includeSensitive = false
+  options: UploadOptions = {}
 ): Promise<ShareResponse> {
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       "x-devtools-export-schema": SNAPSHOT_SCHEMA_VERSION,
-      "x-devtools-export-include-sensitive": String(includeSensitive),
+      "x-devtools-export-include-sensitive": String(options.includeSensitive === true),
+      "x-devtools-export-include-screenshot": String(options.includeScreenshot === true),
     },
     body: JSON.stringify(snapshot),
   });
@@ -257,7 +274,7 @@ function evalInInspectedWindow<T>(expression: string): Promise<T> {
   });
 }
 
-export async function captureCdpSnapshot(tabId: number): Promise<CdpSnapshot> {
+export async function captureCdpSnapshot(tabId: number, options: CaptureCdpOptions = {}): Promise<CdpSnapshot> {
   const target: chrome.debugger.Debuggee = { tabId };
   await attachDebugger(target);
 
@@ -269,13 +286,15 @@ export async function captureCdpSnapshot(tabId: number): Promise<CdpSnapshot> {
 
     cdp.layoutMetrics = await safeCommand(target, "Page.getLayoutMetrics", undefined, cdp.errors);
     cdp.performanceMetrics = await safeCommand(target, "Performance.getMetrics", undefined, cdp.errors);
-    const screenshot = await safeCommand<{ data?: string }>(
-      target,
-      "Page.captureScreenshot",
-      { format: "png", captureBeyondViewport: false },
-      cdp.errors
-    );
-    if (screenshot?.data) cdp.screenshotDataUrl = `data:image/png;base64,${screenshot.data}`;
+    if (options.includeScreenshot === true) {
+      const screenshot = await safeCommand<{ data?: string }>(
+        target,
+        "Page.captureScreenshot",
+        { format: "png", captureBeyondViewport: false },
+        cdp.errors
+      );
+      if (screenshot?.data) cdp.screenshotDataUrl = `data:image/png;base64,${screenshot.data}`;
+    }
     cdp.domSnapshot = await safeCommand(
       target,
       "DOMSnapshot.captureSnapshot",

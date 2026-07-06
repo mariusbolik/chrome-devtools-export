@@ -55,6 +55,7 @@ describe("share view model", () => {
 
     const model = buildShareViewModel(snapshot);
 
+    expect(model.seoTitle).toBe("DevToolsExport #AbC234xy");
     expect(model.title).toBe("Example App");
     expect(model.domain).toBe("example.com");
     expect(model.safeUrl).toBe("https://example.com/app");
@@ -161,11 +162,15 @@ describe("share view model", () => {
     const model = buildShareViewModel(snapshot);
 
     expect(model.cdp.statusRows).toEqual([
-      { label: "Screenshot", value: "Redacted", tone: "warn" },
       { label: "DOM Snapshot", value: "Redacted", tone: "warn" },
       { label: "Performance Metrics", value: "2 metrics", tone: "ok" },
       { label: "CDP Errors", value: "1 error", tone: "error" },
     ]);
+    expect(model.cdp.screenshot).toEqual({
+      state: "missing",
+      label: "Screenshot not captured",
+      src: null,
+    });
     expect(model.cdp.layoutRows).toEqual([
       { label: "Viewport", value: "1280 x 720", valueType: "object" },
       { label: "Content Size", value: "1280 x 2400", valueType: "object" },
@@ -187,6 +192,25 @@ describe("share view model", () => {
       safeUrl: "https://example.com/api/data?token=redacted",
     });
     expect(model.cdp.errors).toEqual(["DOMSnapshot.captureSnapshot: failed"]);
+  });
+
+  test("shows a screenshot only when the CDP payload contains an image", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com",
+      cdp: {
+        screenshotDataUrl: "data:image/png;base64,screenshot-image",
+      },
+    });
+
+    const model = buildShareViewModel(snapshot);
+
+    expect(model.cdp.screenshot).toEqual({
+      state: "available",
+      label: "Captured",
+      src: "data:image/png;base64,screenshot-image",
+    });
+    expect(model.cdp.statusRows[0]).toEqual({ label: "Screenshot", value: "Captured", tone: "ok" });
   });
 
   test("builds environment UI sections and installed extension rows", () => {

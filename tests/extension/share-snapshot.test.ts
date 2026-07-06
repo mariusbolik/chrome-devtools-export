@@ -68,6 +68,42 @@ describe("extension share snapshot helpers", () => {
     expect(result.snapshot.redactions.length).toBeGreaterThan(0);
   });
 
+  test("prepareSnapshotForUpload can include screenshots without including other sensitive fields", () => {
+    const result = prepareSnapshotForUpload(
+      {
+        id: "AbC234xy",
+        url: "https://example.com?token=secret",
+        network: [
+          {
+            id: 1,
+            method: "POST",
+            url: "https://example.com/api?api_key=secret",
+            status: 200,
+            time: 5,
+            requestHeaders: { Authorization: "Bearer secret" },
+            responseHeaders: {},
+            requestBody: "secret body",
+            responseBody: "secret response",
+          },
+        ],
+        cdp: {
+          screenshotDataUrl: "data:image/png;base64,screenshot-image",
+          domSnapshot: { strings: ["password=dom-secret"] },
+        },
+      },
+      { includeScreenshot: true, maxBytes: 8_000 }
+    );
+
+    const serialized = JSON.stringify(result.snapshot);
+
+    expect(result.snapshot.cdp.screenshotDataUrl).toBe("data:image/png;base64,screenshot-image");
+    expect(serialized).not.toContain("Bearer secret");
+    expect(serialized).not.toContain("api_key=secret");
+    expect(serialized).not.toContain("secret body");
+    expect(serialized).not.toContain("secret response");
+    expect(serialized).not.toContain("dom-secret");
+  });
+
   test("prepareSnapshotForUpload trims oversized raw-sensitive payloads", () => {
     const result = prepareSnapshotForUpload(
       {

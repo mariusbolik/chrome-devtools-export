@@ -129,6 +129,11 @@ export interface RedactionResult {
   redactions: SnapshotNotice[];
 }
 
+export interface RedactionOptions {
+  includeSensitive?: boolean;
+  includeScreenshot?: boolean;
+}
+
 export interface TrimmingResult {
   snapshot: ShareSnapshot;
   truncations: SnapshotNotice[];
@@ -178,8 +183,12 @@ export function createSnapshot(input: CreateSnapshotInput): ShareSnapshot {
   };
 }
 
-export function redactSnapshot(snapshot: ShareSnapshot, includeSensitive = false): RedactionResult {
-  if (includeSensitive) {
+export function redactSnapshot(
+  snapshot: ShareSnapshot,
+  includeSensitiveOrOptions: boolean | RedactionOptions = false
+): RedactionResult {
+  const options = normalizeRedactionOptions(includeSensitiveOrOptions);
+  if (options.includeSensitive) {
     return { snapshot: clone(snapshot), redactions: [] };
   }
 
@@ -212,7 +221,7 @@ export function redactSnapshot(snapshot: ShareSnapshot, includeSensitive = false
   next.storage.sessionStorage = redactRecord(next.storage.sessionStorage, "storage.sessionStorage", redactions);
   next.storage.cookies = redactRecord(next.storage.cookies, "storage.cookies", redactions, true);
 
-  if (next.cdp.screenshotDataUrl) {
+  if (next.cdp.screenshotDataUrl && !options.includeScreenshot) {
     next.cdp.screenshotDataUrl = REDACTED_VALUE;
     redactions.push({ path: "cdp.screenshotDataUrl", reason: "CDP screenshot is sensitive by default" });
   }
@@ -227,6 +236,20 @@ export function redactSnapshot(snapshot: ShareSnapshot, includeSensitive = false
 
   next.redactions = [...next.redactions, ...redactions];
   return { snapshot: next, redactions };
+}
+
+function normalizeRedactionOptions(value: boolean | RedactionOptions): Required<RedactionOptions> {
+  if (typeof value === "boolean") {
+    return {
+      includeSensitive: value,
+      includeScreenshot: value,
+    };
+  }
+
+  return {
+    includeSensitive: value.includeSensitive === true,
+    includeScreenshot: value.includeScreenshot === true,
+  };
 }
 
 export function trimSnapshotToBytes(snapshot: ShareSnapshot, maxBytes: number): TrimmingResult {

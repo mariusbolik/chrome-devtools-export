@@ -7,6 +7,8 @@ describe("popup state", () => {
       status: "idle",
       buttonDisabled: false,
       buttonText: "Share Bug Report",
+      includeScreenshot: true,
+      optionsDisabled: false,
       message: "Capture and upload the active tab.",
       shareUrl: null,
     });
@@ -17,7 +19,21 @@ describe("popup state", () => {
       status: "sharing",
       buttonDisabled: true,
       buttonText: "Sharing...",
+      includeScreenshot: true,
+      optionsDisabled: true,
       message: "Capturing DevTools snapshot...",
+      shareUrl: null,
+    });
+  });
+
+  test("lets the user disable screenshot capture before sharing", () => {
+    expect(reducePopupState(createInitialPopupState(), { type: "setIncludeScreenshot", includeScreenshot: false })).toEqual({
+      status: "idle",
+      buttonDisabled: false,
+      buttonText: "Share Bug Report",
+      includeScreenshot: false,
+      optionsDisabled: false,
+      message: "Capture and upload the active tab.",
       shareUrl: null,
     });
   });
@@ -32,6 +48,8 @@ describe("popup state", () => {
       status: "success",
       buttonDisabled: false,
       buttonText: "Share Bug Report",
+      includeScreenshot: true,
+      optionsDisabled: false,
       message: "Bug report link ready.",
       shareUrl: "https://devtools-export.mcb-software.workers.dev/share/AbC234xy/",
     });
@@ -47,6 +65,8 @@ describe("popup state", () => {
       status: "error",
       buttonDisabled: false,
       buttonText: "Share Bug Report",
+      includeScreenshot: true,
+      optionsDisabled: false,
       message: "Could not capture this tab.",
       shareUrl: null,
     });

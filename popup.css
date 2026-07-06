@@ -50,6 +50,32 @@ p {
   color: var(--text-dim);
 }
 
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  margin-bottom: 10px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-light);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.option-row input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.option-row:has(input:disabled) {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .primary {
   width: 100%;
   min-height: 32px;

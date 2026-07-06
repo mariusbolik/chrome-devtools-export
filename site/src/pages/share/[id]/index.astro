@@ -33,7 +33,7 @@ const pathFor = (url: string) => {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{model ? `${model.domain} - DevTools Export` : "Snapshot not found"}</title>
+    <title>{model ? model.seoTitle : "Snapshot not found"}</title>
   </head>
   <body>
     {
@@ -71,6 +71,9 @@ const pathFor = (url: string) => {
                   <span class="chip">
                     {model.location.flagUrl && <img src={model.location.flagUrl} alt="" />}
                     {model.location.label}
+                  </span>
+                  <span class="chip countdown" id="expiryCountdown" data-expires-at={model.expiresAt} title={`Expires ${formatDate(model.expiresAt)}`}>
+                    Expires in ...
                   </span>
                   <a class="chip link" href={`/api/share/${model.id}.json`}>JSON</a>
                 </div>
@@ -194,13 +197,8 @@ const pathFor = (url: string) => {
                 ))}
               </div>
 
-              {model.cdp.screenshot.src ? (
+              {model.cdp.screenshot.src && (
                 <img class="screenshot" src={model.cdp.screenshot.src} alt="Captured page screenshot" />
-              ) : (
-                <div class={`capture-placeholder ${model.cdp.screenshot.state}`}>
-                  <span>Screenshot</span>
-                  <strong>{model.cdp.screenshot.label}</strong>
-                </div>
               )}
 
               <section class="ui-section">
@@ -342,6 +340,36 @@ const pathFor = (url: string) => {
         </main>
       )
     }
+    <script is:inline>
+      (() => {
+        const el = document.getElementById("expiryCountdown");
+        if (!el) return;
+
+        const expiresAt = new Date(el.getAttribute("data-expires-at") || "").getTime();
+        const format = (milliseconds) => {
+          if (!Number.isFinite(milliseconds)) return "Expires unknown";
+          if (milliseconds <= 0) return "Expired";
+
+          const totalSeconds = Math.floor(milliseconds / 1000);
+          const days = Math.floor(totalSeconds / 86400);
+          const hours = Math.floor((totalSeconds % 86400) / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
+          const seconds = totalSeconds % 60;
+
+          if (days > 0) return `Expires in ${days}d ${hours}h`;
+          if (hours > 0) return `Expires in ${hours}h ${minutes}m`;
+          if (minutes > 0) return `Expires in ${minutes}m ${seconds}s`;
+          return `Expires in ${seconds}s`;
+        };
+
+        const render = () => {
+          el.textContent = format(expiresAt - Date.now());
+        };
+
+        render();
+        window.setInterval(render, 1000);
+      })();
+    </script>
   </body>
 </html>
 
@@ -757,14 +785,12 @@ const pathFor = (url: string) => {
     background: var(--bg);
   }
 
-  .status-card span,
-  .capture-placeholder span {
+  .status-card span {
     display: block;
     color: var(--text-dim);
   }
 
-  .status-card strong,
-  .capture-placeholder strong {
+  .status-card strong {
     display: block;
     margin-top: 4px;
     font-size: 14px;
@@ -775,20 +801,12 @@ const pathFor = (url: string) => {
     color: var(--green);
   }
 
-  .status-card.warn strong,
-  .capture-placeholder.redacted strong {
+  .status-card.warn strong {
     color: var(--yellow);
   }
 
   .status-card.error strong {
     color: var(--red);
-  }
-
-  .capture-placeholder {
-    margin: 12px;
-    padding: 18px;
-    border: 1px solid var(--border);
-    background: var(--bg-light);
   }
 
   .ui-section {

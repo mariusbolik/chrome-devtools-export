@@ -83,6 +83,7 @@ export interface EnvironmentViewModel {
 
 export interface ShareViewModel {
   id: string;
+  seoTitle: string;
   title: string;
   url: string;
   safeUrl: string;
@@ -134,6 +135,7 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
 
   return {
     id: snapshot.id,
+    seoTitle: `DevToolsExport #${snapshot.id}`,
     title: snapshot.page.title || "DevTools snapshot",
     url: snapshot.page.url,
     safeUrl: safeHttpUrl(snapshot.page.url),
@@ -212,7 +214,7 @@ function storageValueType(value: unknown): StorageViewRow["valueType"] {
 }
 
 function buildCdpViewModel(cdp: CdpSnapshot): CdpViewModel {
-  const screenshot = buildCaptureState(cdp.screenshotDataUrl, "Screenshot");
+  const screenshot = buildScreenshotState(cdp.screenshotDataUrl);
   const domSnapshot = buildCaptureState(cdp.domSnapshot, "DOM Snapshot");
   const layoutRows = buildLayoutRows(cdp.layoutMetrics);
   const performanceRows = buildPerformanceRows(cdp.performanceMetrics);
@@ -220,7 +222,7 @@ function buildCdpViewModel(cdp: CdpSnapshot): CdpViewModel {
 
   return {
     statusRows: [
-      { label: "Screenshot", value: screenshot.label, tone: captureTone(screenshot.state) },
+      ...(screenshot.src ? [{ label: "Screenshot", value: screenshot.label, tone: "ok" as const }] : []),
       { label: "DOM Snapshot", value: domSnapshot.label, tone: captureTone(domSnapshot.state) },
       { label: "Performance Metrics", value: pluralize(performanceRows.length, "metric"), tone: performanceRows.length > 0 ? "ok" : "neutral" },
       { label: "CDP Errors", value: pluralize(errors.length, "error"), tone: errors.length > 0 ? "error" : "ok" },
@@ -233,6 +235,13 @@ function buildCdpViewModel(cdp: CdpSnapshot): CdpViewModel {
     resources: buildResourceRows(cdp.pageResources),
     errors,
   };
+}
+
+function buildScreenshotState(value: unknown): CdpViewModel["screenshot"] {
+  if (typeof value === "string" && value.startsWith("data:image/")) {
+    return { state: "available", label: "Captured", src: value };
+  }
+  return { state: "missing", label: "Screenshot not captured", src: null };
 }
 
 function buildCaptureState(value: unknown, label: string): CdpViewModel["screenshot"] {

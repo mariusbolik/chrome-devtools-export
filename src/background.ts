@@ -38,10 +38,16 @@ type ShareResponseMessage =
   | { ok: true; url: string; expiresAt: string }
   | { ok: false; error: string };
 
+interface ShareActiveTabOptions {
+  includeScreenshot: boolean;
+}
+
 // Handle messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "share-active-tab") {
-    shareActiveTab(message.tabId as number)
+    shareActiveTab(message.tabId as number, {
+      includeScreenshot: message.includeScreenshot !== false,
+    })
       .then(sendResponse)
       .catch((error) => {
         sendResponse({
@@ -86,18 +92,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   });
 });
 
-async function shareActiveTab(tabId: number): Promise<ShareResponseMessage> {
+async function shareActiveTab(tabId: number, options: ShareActiveTabOptions): Promise<ShareResponseMessage> {
   try {
     const [page, installedExtensions, cdp] = await Promise.all([
       collectPageCapture(tabId),
       collectInstalledExtensions(),
-      captureCdpSnapshot(tabId).catch((error): CdpSnapshot => ({
+      captureCdpSnapshot(tabId, { includeScreenshot: options.includeScreenshot }).catch((error): CdpSnapshot => ({
         errors: [error instanceof Error ? error.message : "CDP capture failed"],
       })),
     ]);
 
-    const prepared = prepareSnapshotForUpload({
-      ...buildDirectSnapshotInput({
+    const prepared = prepareSnapshotForUpload(
+      buildDirectSnapshotInput({
         id: buildShareId(),
         page,
         extension: collectExtensionMetadata(),
@@ -106,8 +112,9 @@ async function shareActiveTab(tabId: number): Promise<ShareResponseMessage> {
         consoleLogs: tabLogs[tabId] ?? [],
         cdp,
       }),
-    });
-    const share = await uploadSnapshot(prepared.snapshot);
+      { includeScreenshot: options.includeScreenshot }
+    );
+    const share = await uploadSnapshot(prepared.snapshot, undefined, { includeScreenshot: options.includeScreenshot });
 
     return {
       ok: true,

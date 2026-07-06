@@ -6,6 +6,7 @@ type ShareActiveTabResponse =
 
 const statusText = document.getElementById("statusText")!;
 const shareButton = document.getElementById("shareButton") as HTMLButtonElement;
+const includeScreenshot = document.getElementById("includeScreenshot") as HTMLInputElement;
 const progress = document.getElementById("progress")!;
 const shareLink = document.getElementById("shareLink") as HTMLAnchorElement;
 const header = document.querySelector(".header")!;
@@ -17,6 +18,8 @@ function render(next: PopupState) {
   statusText.textContent = state.message;
   shareButton.disabled = state.buttonDisabled;
   shareButton.textContent = state.buttonText;
+  includeScreenshot.checked = state.includeScreenshot;
+  includeScreenshot.disabled = state.optionsDisabled;
   progress.hidden = state.status !== "sharing";
   header.classList.toggle("error", state.status === "error");
 
@@ -48,6 +51,7 @@ async function shareBugReport() {
   const response = await chrome.runtime.sendMessage({
     type: "share-active-tab",
     tabId,
+    includeScreenshot: state.includeScreenshot,
   }) as ShareActiveTabResponse;
 
   if (response.ok) {
@@ -65,6 +69,13 @@ async function shareBugReport() {
 
 shareButton.addEventListener("click", () => {
   void shareBugReport();
+});
+
+includeScreenshot.addEventListener("change", () => {
+  render(reducePopupState(state, {
+    type: "setIncludeScreenshot",
+    includeScreenshot: includeScreenshot.checked,
+  }));
 });
 
 render(state);

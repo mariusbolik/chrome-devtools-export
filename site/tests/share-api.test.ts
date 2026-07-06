@@ -150,6 +150,52 @@ describe("share API", () => {
     expect(stored?.body).toContain("api_key=secret");
   });
 
+  test("handleCreateShare can preserve screenshots without preserving other sensitive fields", async () => {
+    const bucket = new MockR2Bucket();
+    const request = new Request("https://devtoolsexport.com/api/share", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-devtools-export-include-screenshot": "true",
+      },
+      body: JSON.stringify(
+        createSnapshot({
+          id: "Temp234x",
+          url: "https://example.com/app?token=secret",
+          network: [
+            {
+              id: 1,
+              method: "GET",
+              url: "https://example.com/api?api_key=secret",
+              status: 200,
+              time: 20,
+              requestHeaders: { Authorization: "Bearer secret" },
+              responseHeaders: {},
+              requestBody: null,
+              responseBody: "ok",
+            },
+          ],
+          cdp: {
+            screenshotDataUrl: "data:image/png;base64,screenshot-image",
+            domSnapshot: { strings: ["password=dom-secret"] },
+          },
+        })
+      ),
+    });
+
+    const response = await handleCreateShare(request, makeEnv(bucket), {
+      now: new Date("2026-07-06T12:00:00.000Z"),
+      idFactory: () => "AbC234xy",
+    });
+
+    expect(response.status).toBe(201);
+    const stored = bucket.objects.get("snapshots/AbC234xy.json");
+    expect(stored?.body).toContain("screenshot-image");
+    expect(stored?.body).not.toContain("Bearer secret");
+    expect(stored?.body).not.toContain("api_key=secret");
+    expect(stored?.body).not.toContain("dom-secret");
+  });
+
   test("handleCorsPreflight allows extension upload headers", () => {
     const response = handleCorsPreflight();
 
@@ -158,6 +204,7 @@ describe("share API", () => {
     expect(response.headers.get("access-control-allow-methods")).toContain("POST");
     expect(response.headers.get("access-control-allow-headers")).toContain("content-type");
     expect(response.headers.get("access-control-allow-headers")).toContain("x-devtools-export-include-sensitive");
+    expect(response.headers.get("access-control-allow-headers")).toContain("x-devtools-export-include-screenshot");
   });
 
   test("getSharedSnapshotJson returns stored JSON with no-store cache headers", async () => {
