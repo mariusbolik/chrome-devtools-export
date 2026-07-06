@@ -17,9 +17,32 @@ interface ConsoleLogEntry extends ConsoleLogData {
 // Store logs per tab (simple object for service worker persistence)
 const tabLogs: Record<number, ConsoleLogEntry[]> = {};
 const tabConnections: Record<number, chrome.runtime.Port[]> = {};
+const pendingShareRequests: Record<
+  string,
+  {
+    resolve: (response: ShareResponseMessage) => void;
+    timeoutId: ReturnType<typeof setTimeout>;
+  }
+> = {};
+
+type ShareResponseMessage =
+  | { ok: true; url: string; expiresAt: string }
+  | { ok: false; error: string };
 
 // Handle messages from content scripts
-chrome.runtime.onMessage.addListener((message, sender) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "share-active-tab") {
+    requestShareFromPanel(message.tabId as number)
+      .then(sendResponse)
+      .catch((error) => {
+        sendResponse({
+          ok: false,
+          error: error instanceof Error ? error.message : "Share failed",
+        });
+      });
+    return true;
+  }
+
   if (!sender.tab?.id) return;
   const tabId = sender.tab.id;
 
@@ -54,6 +77,35 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   });
 });
 
+async function requestShareFromPanel(tabId: number): Promise<ShareResponseMessage> {
+  const ports = tabConnections[tabId] ?? [];
+  const port = ports.at(-1);
+
+  if (!port) {
+    return {
+      ok: false,
+      error: "Open DevTools and select the Export panel first.",
+    };
+  }
+
+  const requestId = `${Date.now()}-${Math.random()}`;
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      delete pendingShareRequests[requestId];
+      resolve({ ok: false, error: "Share timed out. Try again from the Export panel." });
+    }, 120_000);
+
+    pendingShareRequests[requestId] = { resolve, timeoutId };
+    try {
+      port.postMessage({ type: "share-request", requestId });
+    } catch {
+      clearTimeout(timeoutId);
+      delete pendingShareRequests[requestId];
+      resolve({ ok: false, error: "DevTools Export panel is not connected." });
+    }
+  });
+}
+
 // Handle connections from devtools panels
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== "devtools-panel") return;
@@ -61,6 +113,16 @@ chrome.runtime.onConnect.addListener((port) => {
   let tabId: number | null = null;
 
   port.onMessage.addListener((message) => {
+    if (message.type === "share-response") {
+      const requestId = message.requestId as string;
+      const pending = pendingShareRequests[requestId];
+      if (!pending) return;
+      clearTimeout(pending.timeoutId);
+      delete pendingShareRequests[requestId];
+      pending.resolve(message.response as ShareResponseMessage);
+      return;
+    }
+
     if (message.type === "init") {
       tabId = message.tabId as number;
 

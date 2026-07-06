@@ -13,7 +13,7 @@ import {
   type StorageSnapshot,
 } from "../shared/snapshot";
 
-export const SHARE_ENDPOINT = "https://devtools-export-share.mcb-software.workers.dev/api/share";
+export const SHARE_ENDPOINT = "https://devtools-export.mcb-software.workers.dev/api/share";
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 export interface PrepareOptions {

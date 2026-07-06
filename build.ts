@@ -16,6 +16,7 @@ async function build() {
   const entrypoints = [
     "src/devtools.ts",
     "src/panel.ts",
+    "src/popup.ts",
     "src/background.ts",
     "src/content-main.ts",
     "src/content-bridge.ts",
@@ -40,6 +41,8 @@ async function build() {
   await cp("./devtools.html", join(distDir, "devtools.html"));
   await cp("./panel.html", join(distDir, "panel.html"));
   await cp("./panel.css", join(distDir, "panel.css"));
+  await cp("./popup.html", join(distDir, "popup.html"));
+  await cp("./popup.css", join(distDir, "popup.css"));
   await cp("./assets", join(distDir, "assets"), { recursive: true });
 
   // Copy icons if they exist
@@ -60,7 +63,7 @@ if (isWatch) {
   console.log("Watching for changes...");
 
   const watchDirs = ["./src"];
-  const watchFiles = ["./manifest.json", "./devtools.html", "./panel.html", "./panel.css"];
+  const watchFiles = ["./manifest.json", "./devtools.html", "./panel.html", "./panel.css", "./popup.html", "./popup.css"];
 
   for (const dir of watchDirs) {
     watch(dir, { recursive: true }, async (event, filename) => {

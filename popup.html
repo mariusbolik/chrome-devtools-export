@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DevTools Export</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="popup">
+    <header class="header">
+      <img src="assets/icon/icon32.png" alt="">
+      <div>
+        <h1>DevTools Export</h1>
+        <p id="statusText">Capture from the open DevTools Export panel.</p>
+      </div>
+    </header>
+
+    <button id="shareButton" class="primary">Share Bug Report</button>
+    <div id="progress" class="progress" hidden>
+      <span></span>
+    </div>
+    <a id="shareLink" class="share-link" target="_blank" rel="noreferrer"></a>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -181,6 +181,37 @@ function connectConsolePort() {
 
     if (message.type === "new-log") {
       addConsoleEntry(message.log as ConsoleLogEntry);
+      return;
+    }
+
+    if (message.type === "share-request") {
+      const requestId = message.requestId as string;
+      void shareDevtoolsSnapshot({
+        inspectedTabId,
+        networkRequests,
+        consoleLogs,
+      })
+        .then((share) => {
+          consolePort?.postMessage({
+            type: "share-response",
+            requestId,
+            response: {
+              ok: true,
+              url: share.url,
+              expiresAt: share.expiresAt,
+            },
+          });
+        })
+        .catch((error) => {
+          consolePort?.postMessage({
+            type: "share-response",
+            requestId,
+            response: {
+              ok: false,
+              error: error instanceof Error ? error.message : "Share failed",
+            },
+          });
+        });
     }
   });
 
