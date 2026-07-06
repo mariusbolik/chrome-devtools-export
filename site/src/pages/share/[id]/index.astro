@@ -185,14 +185,154 @@ const pathFor = (url: string) => {
             </div>
 
             <div class="panel cdp-panel">
-              {snapshot.cdp.screenshotDataUrl && String(snapshot.cdp.screenshotDataUrl).startsWith("data:image/") && (
-                <img class="screenshot" src={snapshot.cdp.screenshotDataUrl} alt="Captured page screenshot" />
+              <div class="status-grid">
+                {model.cdp.statusRows.map((row) => (
+                  <div class={`status-card ${row.tone}`}>
+                    <span>{row.label}</span>
+                    <strong>{row.value}</strong>
+                  </div>
+                ))}
+              </div>
+
+              {model.cdp.screenshot.src ? (
+                <img class="screenshot" src={model.cdp.screenshot.src} alt="Captured page screenshot" />
+              ) : (
+                <div class={`capture-placeholder ${model.cdp.screenshot.state}`}>
+                  <span>Screenshot</span>
+                  <strong>{model.cdp.screenshot.label}</strong>
+                </div>
               )}
-              <pre>{JSON.stringify(snapshot.cdp, null, 2)}</pre>
+
+              <section class="ui-section">
+                <h2>Layout</h2>
+                {model.cdp.layoutRows.length > 0 ? (
+                  <div class="kv-table">
+                    {model.cdp.layoutRows.map((row) => (
+                      <div class="kv-row">
+                        <span>{row.label}</span>
+                        <code class={row.valueType}>{row.value}</code>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="empty compact">No layout metrics captured</p>
+                )}
+              </section>
+
+              <section class="ui-section">
+                <h2>Performance</h2>
+                {model.cdp.performanceRows.length > 0 ? (
+                  <div class="kv-table">
+                    {model.cdp.performanceRows.map((row) => (
+                      <div class="kv-row">
+                        <span>{row.label}</span>
+                        <code class={row.valueType}>{row.value}</code>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="empty compact">No performance metrics captured</p>
+                )}
+              </section>
+
+              <section class="ui-section">
+                <h2>Page Assets</h2>
+                {model.cdp.assets.length > 0 ? (
+                  <div class="asset-table">
+                    <div class="asset-row table-header"><span>Type</span><span>Path</span></div>
+                    {model.cdp.assets.map((asset) => (
+                      <div class="asset-row">
+                        <span>{asset.type}</span>
+                        {asset.safeUrl !== "#" ? <a href={asset.safeUrl}>{asset.path}</a> : <span>{asset.path}</span>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="empty compact">No page assets captured</p>
+                )}
+              </section>
+
+              <section class="ui-section">
+                <h2>Page Resources</h2>
+                {model.cdp.resources.length > 0 ? (
+                  <div class="resource-table">
+                    <div class="resource-row table-header"><span>Type</span><span>Path</span><span>Duration</span></div>
+                    {model.cdp.resources.map((resource) => (
+                      <div class="resource-row">
+                        <span>{resource.initiatorType}</span>
+                        {resource.safeUrl !== "#" ? <a href={resource.safeUrl}>{resource.path}</a> : <span>{resource.path}</span>}
+                        <span>{resource.duration}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="empty compact">No page resources captured</p>
+                )}
+              </section>
+
+              {model.cdp.errors.length > 0 && (
+                <section class="ui-section">
+                  <h2>CDP Errors</h2>
+                  <div class="error-list">
+                    {model.cdp.errors.map((error) => <code>{error}</code>)}
+                  </div>
+                </section>
+              )}
+
+              <details class="raw-details">
+                <summary><span>Raw CDP</span><em>JSON</em></summary>
+                <pre>{JSON.stringify(snapshot.cdp, null, 2)}</pre>
+              </details>
             </div>
 
             <div class="panel environment-panel">
-              <pre>{JSON.stringify({ environment: snapshot.environment, extension: snapshot.extension, installedExtensions: snapshot.installedExtensions }, null, 2)}</pre>
+              {model.environment.sections.map((section) => (
+                <section class="ui-section">
+                  <h2>{section.label}</h2>
+                  {section.rows.length > 0 ? (
+                    <div class="kv-table">
+                      {section.rows.map((row) => (
+                        <div class="kv-row">
+                          <span>{row.label}</span>
+                          <code class={row.valueType}>{row.value}</code>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p class="empty compact">No values captured</p>
+                  )}
+                </section>
+              ))}
+
+              <section class="ui-section">
+                <h2>Installed Extensions</h2>
+                {model.environment.installedExtensions.length > 0 ? (
+                  <div class="extensions-table">
+                    <div class="extension-row table-header">
+                      <span>Name</span><span>Version</span><span>Status</span><span>Type</span><span>Permissions</span>
+                    </div>
+                    {model.environment.installedExtensions.map((extension) => (
+                      <div class="extension-row">
+                        <span>
+                          <strong>{extension.name}</strong>
+                          <em>{extension.id}</em>
+                        </span>
+                        <span>{extension.version}</span>
+                        <span class={extension.enabled === "Enabled" ? "status ok" : "status error"}>{extension.enabled}</span>
+                        <span>{extension.type} / {extension.installType}</span>
+                        <span>{extension.permissions}, {extension.hostPermissions}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="empty compact">No installed extensions captured</p>
+                )}
+              </section>
+
+              <details class="raw-details">
+                <summary><span>Raw Environment</span><em>JSON</em></summary>
+                <pre>{JSON.stringify({ environment: snapshot.environment, extension: snapshot.extension, installedExtensions: snapshot.installedExtensions }, null, 2)}</pre>
+              </details>
             </div>
 
             <div class="panel json-panel">
@@ -604,6 +744,165 @@ const pathFor = (url: string) => {
     color: var(--text-dim);
   }
 
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    border-bottom: 1px solid var(--border);
+  }
+
+  .status-card {
+    min-height: 66px;
+    padding: 10px 12px;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .status-card span,
+  .capture-placeholder span {
+    display: block;
+    color: var(--text-dim);
+  }
+
+  .status-card strong,
+  .capture-placeholder strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .status-card.ok strong {
+    color: var(--green);
+  }
+
+  .status-card.warn strong,
+  .capture-placeholder.redacted strong {
+    color: var(--yellow);
+  }
+
+  .status-card.error strong {
+    color: var(--red);
+  }
+
+  .capture-placeholder {
+    margin: 12px;
+    padding: 18px;
+    border: 1px solid var(--border);
+    background: var(--bg-light);
+  }
+
+  .ui-section {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .kv-table,
+  .asset-table,
+  .resource-table,
+  .extensions-table {
+    display: grid;
+  }
+
+  .kv-table {
+    grid-template-columns: minmax(180px, 0.28fr) minmax(0, 1fr);
+  }
+
+  .asset-table {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+
+  .resource-table {
+    grid-template-columns: 110px minmax(0, 1fr) 90px;
+  }
+
+  .extensions-table {
+    grid-template-columns: minmax(220px, 1.2fr) 90px 86px 140px minmax(180px, 1fr);
+  }
+
+  .kv-row,
+  .asset-row,
+  .resource-row,
+  .extension-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    border-top: 1px solid var(--border);
+  }
+
+  .kv-row span,
+  .kv-row code,
+  .asset-row span,
+  .asset-row a,
+  .resource-row span,
+  .resource-row a,
+  .extension-row span {
+    min-width: 0;
+    padding: 7px 10px;
+    overflow-wrap: anywhere;
+  }
+
+  .kv-row span:first-child,
+  .asset-row span:first-child,
+  .resource-row span:first-child {
+    color: var(--text-dim);
+    border-right: 1px solid var(--border);
+  }
+
+  .table-header {
+    min-height: 28px;
+    align-items: center;
+    background: var(--bg-hover);
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .kv-row code,
+  .error-list code,
+  .extension-row em {
+    font-family: "SF Mono", Monaco, monospace;
+  }
+
+  .kv-row code.array,
+  .kv-row code.object {
+    color: var(--green);
+  }
+
+  .kv-row code.boolean,
+  .kv-row code.number {
+    color: var(--blue);
+  }
+
+  .kv-row code.null {
+    color: var(--text-dim);
+  }
+
+  .extension-row strong,
+  .extension-row em {
+    display: block;
+  }
+
+  .extension-row em {
+    margin-top: 2px;
+    color: var(--text-dim);
+    font-style: normal;
+    font-size: 10px;
+  }
+
+  .error-list {
+    display: grid;
+  }
+
+  .error-list code {
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+    color: var(--red);
+    overflow-wrap: anywhere;
+  }
+
+  .raw-details {
+    border-bottom: 1px solid var(--border);
+  }
+
   pre {
     margin: 0;
     padding: 10px 12px;
@@ -624,6 +923,11 @@ const pathFor = (url: string) => {
   .not-found {
     color: var(--text-dim);
     padding: 20px;
+  }
+
+  .empty.compact {
+    margin: 0;
+    padding: 10px 12px;
   }
 
   .not-found h1 {
@@ -655,8 +959,35 @@ const pathFor = (url: string) => {
     }
 
     .storage-table,
-    .storage-row {
+    .storage-row,
+    .kv-table,
+    .kv-row,
+    .asset-table,
+    .asset-row {
       grid-template-columns: minmax(110px, 0.4fr) minmax(0, 1fr);
+    }
+
+    .status-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .resource-table,
+    .resource-row {
+      grid-template-columns: 80px minmax(0, 1fr);
+    }
+
+    .resource-row span:last-child {
+      display: none;
+    }
+
+    .extensions-table,
+    .extension-row {
+      grid-template-columns: minmax(180px, 1fr) 80px 78px;
+    }
+
+    .extension-row span:nth-child(4),
+    .extension-row span:nth-child(5) {
+      display: none;
     }
   }
 </style>

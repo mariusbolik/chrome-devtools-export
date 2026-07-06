@@ -128,4 +128,150 @@ describe("share view model", () => {
       valueType: "object",
     });
   });
+
+  test("builds DOM and CDP UI sections from captured details", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com",
+      cdp: {
+        screenshotDataUrl: "[REDACTED]",
+        domSnapshot: "[REDACTED]",
+        layoutMetrics: {
+          cssLayoutViewport: { clientWidth: 1280, clientHeight: 720 },
+          contentSize: { width: 1280, height: 2400 },
+        },
+        performanceMetrics: {
+          metrics: [
+            { name: "JSHeapUsedSize", value: 123456 },
+            { name: "Nodes", value: 42 },
+          ],
+        },
+        pageAssets: {
+          images: ["https://example.com/logo.png"],
+          scripts: ["https://example.com/app.js"],
+          stylesheets: ["https://example.com/app.css"],
+        },
+        pageResources: [
+          { name: "https://example.com/api/data?token=redacted", initiatorType: "fetch", duration: 42.6 },
+        ],
+        errors: ["DOMSnapshot.captureSnapshot: failed"],
+      },
+    });
+
+    const model = buildShareViewModel(snapshot);
+
+    expect(model.cdp.statusRows).toEqual([
+      { label: "Screenshot", value: "Redacted", tone: "warn" },
+      { label: "DOM Snapshot", value: "Redacted", tone: "warn" },
+      { label: "Performance Metrics", value: "2 metrics", tone: "ok" },
+      { label: "CDP Errors", value: "1 error", tone: "error" },
+    ]);
+    expect(model.cdp.layoutRows).toEqual([
+      { label: "Viewport", value: "1280 x 720", valueType: "object" },
+      { label: "Content Size", value: "1280 x 2400", valueType: "object" },
+    ]);
+    expect(model.cdp.performanceRows).toEqual([
+      { label: "JSHeapUsedSize", value: "123456", valueType: "number" },
+      { label: "Nodes", value: "42", valueType: "number" },
+    ]);
+    expect(model.cdp.assets.map((asset) => [asset.type, asset.path, asset.safeUrl])).toEqual([
+      ["Image", "/logo.png", "https://example.com/logo.png"],
+      ["Script", "/app.js", "https://example.com/app.js"],
+      ["Stylesheet", "/app.css", "https://example.com/app.css"],
+    ]);
+    expect(model.cdp.resources[0]).toEqual({
+      initiatorType: "fetch",
+      path: "/api/data?token=redacted",
+      duration: "43ms",
+      url: "https://example.com/api/data?token=redacted",
+      safeUrl: "https://example.com/api/data?token=redacted",
+    });
+    expect(model.cdp.errors).toEqual(["DOMSnapshot.captureSnapshot: failed"]);
+  });
+
+  test("builds environment UI sections and installed extension rows", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com",
+      extension: {
+        id: "devtools-export",
+        version: "1.0.0",
+      },
+      environment: {
+        userAgent: "Mozilla/5.0 Chrome/126.0.0.0",
+        language: "en-US",
+        languages: ["en-US", "de-DE"],
+        platform: "macOS",
+        vendor: "Google Inc.",
+        hardwareConcurrency: 10,
+        deviceMemory: 8,
+        timezone: "Europe/Berlin",
+        screen: { width: 3024, height: 1964, colorDepth: 30 },
+        viewport: { width: 1280, height: 720, devicePixelRatio: 2 },
+        browser: {
+          browser: { name: "Chrome", version: "126.0.0.0" },
+          os: { name: "macOS", version: "15.0" },
+          cpu: { architecture: "arm64" },
+        },
+        cloudflare: {
+          country: "DE",
+          city: "Berlin",
+          colo: "FRA",
+          timezone: "Europe/Berlin",
+        },
+      },
+      installedExtensions: [
+        {
+          id: "a",
+          name: "React DevTools",
+          version: "5.0.0",
+          enabled: true,
+          type: "extension",
+          installType: "normal",
+          permissions: ["storage", "tabs"],
+          hostPermissions: ["<all_urls>"],
+        },
+      ],
+    });
+
+    const model = buildShareViewModel(snapshot);
+
+    expect(model.environment.sections.map((section) => [section.id, section.rows.length])).toEqual([
+      ["browser", 5],
+      ["device", 6],
+      ["location", 4],
+      ["extension", 2],
+    ]);
+    expect(model.environment.sections[0].rows.slice(0, 2)).toEqual([
+      { label: "Browser", value: "Chrome 126.0.0.0", valueType: "string" },
+      { label: "OS", value: "macOS 15.0", valueType: "string" },
+    ]);
+    expect(model.environment.sections[1].rows).toContainEqual({
+      label: "Viewport",
+      value: "1280 x 720 @2x",
+      valueType: "object",
+    });
+    expect(model.environment.sections[1].rows).toContainEqual({
+      label: "Screen",
+      value: "3024 x 1964, 30-bit color",
+      valueType: "object",
+    });
+    expect(model.environment.sections[2].rows).toContainEqual({
+      label: "Location",
+      value: "Berlin, DE",
+      valueType: "string",
+    });
+    expect(model.environment.installedExtensions).toEqual([
+      {
+        id: "a",
+        name: "React DevTools",
+        version: "5.0.0",
+        enabled: "Enabled",
+        type: "extension",
+        installType: "normal",
+        permissions: "2 permissions",
+        hostPermissions: "1 host permission",
+      },
+    ]);
+  });
 });
