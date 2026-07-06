@@ -44,56 +44,6 @@ const pathFor = (url: string) => {
         </main>
       ) : (
         <main class="app-shell">
-          <header class="topbar">
-            <div class="brand">
-              <img src="/assets/icon/icon.png" alt="" />
-              <div>
-                <h1>{model.title}</h1>
-                <a href={model.safeUrl}>{model.url}</a>
-              </div>
-            </div>
-            <div class="meta-chips">
-              <span class="chip strong">#{model.id}</span>
-              <span class="chip">
-                {model.browser.iconUrl && <img src={model.browser.iconUrl} alt="" />}
-                {model.browser.label}
-              </span>
-              <span class="chip">
-                {model.location.flagUrl && <img src={model.location.flagUrl} alt="" />}
-                {model.location.label}
-              </span>
-              <a class="chip link" href={`/api/share/${model.id}.json`}>JSON</a>
-            </div>
-          </header>
-
-          <section class="summary-grid">
-            <div class="metric">
-              <span>Network</span>
-              <strong>{model.counts.network}</strong>
-              <em>{model.counts.networkErrors} errors</em>
-            </div>
-            <div class="metric">
-              <span>Console</span>
-              <strong>{model.counts.console}</strong>
-              <em>{model.counts.consoleErrors} errors</em>
-            </div>
-            <div class="metric">
-              <span>Storage</span>
-              <strong>{model.counts.storageBuckets}</strong>
-              <em>buckets</em>
-            </div>
-            <div class="metric">
-              <span>Extensions</span>
-              <strong>{model.counts.installedExtensions}</strong>
-              <em>installed</em>
-            </div>
-            <div class="metric warn">
-              <span>Redactions</span>
-              <strong>{model.counts.redactions}</strong>
-              <em>{model.counts.truncations} trims</em>
-            </div>
-          </section>
-
           <section class="details">
             <input checked id="tab-summary" name="tabs" type="radio" />
             <input id="tab-network" name="tabs" type="radio" />
@@ -103,15 +53,67 @@ const pathFor = (url: string) => {
             <input id="tab-environment" name="tabs" type="radio" />
             <input id="tab-json" name="tabs" type="radio" />
 
-            <nav class="tabs" aria-label="Snapshot sections">
-              <label for="tab-summary">Summary</label>
-              <label for="tab-network">Network</label>
-              <label for="tab-console">Console</label>
-              <label for="tab-storage">Storage</label>
-              <label for="tab-cdp">DOM/CDP</label>
-              <label for="tab-environment">Environment</label>
-              <label for="tab-json">Raw JSON</label>
-            </nav>
+            <div class="sticky-shell">
+              <header class="topbar">
+                <div class="brand">
+                  <img src="/assets/icon/icon.png" alt="" />
+                  <div>
+                    <h1>{model.title}</h1>
+                    <a href={model.safeUrl}>{model.url}</a>
+                  </div>
+                </div>
+                <div class="meta-chips">
+                  <span class="chip strong">#{model.id}</span>
+                  <span class="chip">
+                    {model.browser.iconUrl && <img src={model.browser.iconUrl} alt="" />}
+                    {model.browser.label}
+                  </span>
+                  <span class="chip">
+                    {model.location.flagUrl && <img src={model.location.flagUrl} alt="" />}
+                    {model.location.label}
+                  </span>
+                  <a class="chip link" href={`/api/share/${model.id}.json`}>JSON</a>
+                </div>
+              </header>
+
+              <section class="summary-grid">
+                <div class="metric">
+                  <span>Network</span>
+                  <strong>{model.counts.network}</strong>
+                  <em>{model.counts.networkErrors} errors</em>
+                </div>
+                <div class="metric">
+                  <span>Console</span>
+                  <strong>{model.counts.console}</strong>
+                  <em>{model.counts.consoleErrors} errors</em>
+                </div>
+                <div class="metric">
+                  <span>Storage</span>
+                  <strong>{model.counts.storageBuckets}</strong>
+                  <em>buckets</em>
+                </div>
+                <div class="metric">
+                  <span>Extensions</span>
+                  <strong>{model.counts.installedExtensions}</strong>
+                  <em>installed</em>
+                </div>
+                <div class="metric warn">
+                  <span>Redactions</span>
+                  <strong>{model.counts.redactions}</strong>
+                  <em>{model.counts.truncations} trims</em>
+                </div>
+              </section>
+
+              <nav class="tabs" aria-label="Snapshot sections">
+                <label for="tab-summary">Summary</label>
+                <label for="tab-network">Network</label>
+                <label for="tab-console">Console</label>
+                <label for="tab-storage">Storage</label>
+                <label for="tab-cdp">DOM/CDP</label>
+                <label for="tab-environment">Environment</label>
+                <label for="tab-json">Raw JSON</label>
+              </nav>
+            </div>
 
             <div class="panel summary-panel">
               <dl class="key-values">
@@ -225,10 +227,15 @@ const pathFor = (url: string) => {
     flex-direction: column;
   }
 
-  .topbar {
+  .sticky-shell {
     position: sticky;
     top: 0;
     z-index: 10;
+    flex: 0 0 auto;
+    background: var(--bg);
+  }
+
+  .topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -355,13 +362,13 @@ const pathFor = (url: string) => {
     white-space: nowrap;
   }
 
-  #tab-summary:checked ~ .tabs label[for="tab-summary"],
-  #tab-network:checked ~ .tabs label[for="tab-network"],
-  #tab-console:checked ~ .tabs label[for="tab-console"],
-  #tab-storage:checked ~ .tabs label[for="tab-storage"],
-  #tab-cdp:checked ~ .tabs label[for="tab-cdp"],
-  #tab-environment:checked ~ .tabs label[for="tab-environment"],
-  #tab-json:checked ~ .tabs label[for="tab-json"] {
+  #tab-summary:checked ~ .sticky-shell .tabs label[for="tab-summary"],
+  #tab-network:checked ~ .sticky-shell .tabs label[for="tab-network"],
+  #tab-console:checked ~ .sticky-shell .tabs label[for="tab-console"],
+  #tab-storage:checked ~ .sticky-shell .tabs label[for="tab-storage"],
+  #tab-cdp:checked ~ .sticky-shell .tabs label[for="tab-cdp"],
+  #tab-environment:checked ~ .sticky-shell .tabs label[for="tab-environment"],
+  #tab-json:checked ~ .sticky-shell .tabs label[for="tab-json"] {
     color: var(--text);
     border-bottom-color: var(--accent);
   }
