@@ -48,6 +48,7 @@ export interface CdpViewModel {
     label: string;
     src: string | null;
   };
+  hasScreenshot: boolean;
   domSnapshot: {
     state: "available" | "missing" | "redacted";
     label: string;
@@ -228,6 +229,7 @@ function buildCdpViewModel(cdp: CdpSnapshot): CdpViewModel {
       { label: "CDP Errors", value: pluralize(errors.length, "error"), tone: errors.length > 0 ? "error" : "ok" },
     ],
     screenshot,
+    hasScreenshot: screenshot.src !== null,
     domSnapshot,
     layoutRows,
     performanceRows,

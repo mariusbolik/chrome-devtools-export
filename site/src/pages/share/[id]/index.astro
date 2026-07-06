@@ -46,6 +46,7 @@ const pathFor = (url: string) => {
         <main class="app-shell">
           <section class="details">
             <input checked id="tab-summary" name="tabs" type="radio" />
+            <input id="tab-screenshot" name="tabs" type="radio" />
             <input id="tab-network" name="tabs" type="radio" />
             <input id="tab-console" name="tabs" type="radio" />
             <input id="tab-storage" name="tabs" type="radio" />
@@ -109,6 +110,7 @@ const pathFor = (url: string) => {
 
               <nav class="tabs" aria-label="Snapshot sections">
                 <label for="tab-summary">Summary</label>
+                <label for="tab-screenshot">Screenshot</label>
                 <label for="tab-network">Network</label>
                 <label for="tab-console">Console</label>
                 <label for="tab-storage">Storage</label>
@@ -135,6 +137,17 @@ const pathFor = (url: string) => {
                 ))}
                 {snapshot.redactions.length + snapshot.truncations.length === 0 && <p class="empty">No redactions or truncations recorded</p>}
               </div>
+            </div>
+
+            <div class="panel screenshot-panel">
+              {model.cdp.hasScreenshot && model.cdp.screenshot.src ? (
+                <figure class="screenshot-frame">
+                  <img class="screenshot" src={model.cdp.screenshot.src} alt="Captured page screenshot" />
+                  <figcaption>Captured page screenshot</figcaption>
+                </figure>
+              ) : (
+                <p class="empty">No screenshot included</p>
+              )}
             </div>
 
             <div class="panel network-panel">
@@ -196,10 +209,6 @@ const pathFor = (url: string) => {
                   </div>
                 ))}
               </div>
-
-              {model.cdp.screenshot.src && (
-                <img class="screenshot" src={model.cdp.screenshot.src} alt="Captured page screenshot" />
-              )}
 
               <section class="ui-section">
                 <h2>Layout</h2>
@@ -549,6 +558,7 @@ const pathFor = (url: string) => {
   }
 
   #tab-summary:checked ~ .sticky-shell .tabs label[for="tab-summary"],
+  #tab-screenshot:checked ~ .sticky-shell .tabs label[for="tab-screenshot"],
   #tab-network:checked ~ .sticky-shell .tabs label[for="tab-network"],
   #tab-console:checked ~ .sticky-shell .tabs label[for="tab-console"],
   #tab-storage:checked ~ .sticky-shell .tabs label[for="tab-storage"],
@@ -567,6 +577,7 @@ const pathFor = (url: string) => {
   }
 
   #tab-summary:checked ~ .summary-panel,
+  #tab-screenshot:checked ~ .screenshot-panel,
   #tab-network:checked ~ .network-panel,
   #tab-console:checked ~ .console-panel,
   #tab-storage:checked ~ .storage-panel,
@@ -930,11 +941,23 @@ const pathFor = (url: string) => {
     color: var(--text);
   }
 
+  .screenshot-frame {
+    margin: 0;
+    padding: 12px;
+  }
+
   .screenshot {
     display: block;
-    max-width: min(100%, 960px);
-    margin: 12px;
+    width: min(100%, 1280px);
+    max-height: calc(100vh - 260px);
+    object-fit: contain;
     border: 1px solid var(--border);
+    background: var(--bg-light);
+  }
+
+  .screenshot-frame figcaption {
+    margin-top: 8px;
+    color: var(--text-dim);
   }
 
   .empty,

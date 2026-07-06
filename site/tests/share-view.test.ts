@@ -171,6 +171,7 @@ describe("share view model", () => {
       label: "Screenshot not captured",
       src: null,
     });
+    expect(model.cdp.hasScreenshot).toBe(false);
     expect(model.cdp.layoutRows).toEqual([
       { label: "Viewport", value: "1280 x 720", valueType: "object" },
       { label: "Content Size", value: "1280 x 2400", valueType: "object" },
@@ -210,6 +211,7 @@ describe("share view model", () => {
       label: "Captured",
       src: "data:image/png;base64,screenshot-image",
     });
+    expect(model.cdp.hasScreenshot).toBe(true);
     expect(model.cdp.statusRows[0]).toEqual({ label: "Screenshot", value: "Captured", tone: "ok" });
   });
 
