@@ -73,6 +73,53 @@ describe("share view model", () => {
       redactions: 1,
       truncations: 1,
     });
+    expect(model.privacy.summaryRows).toEqual([
+      { label: "Sensitive Values Redacted", value: "1", tone: "warn" },
+      { label: "Bodies Partially Shown", value: "0", tone: "neutral" },
+      { label: "Binary Bodies Omitted", value: "0", tone: "neutral" },
+      { label: "Payloads Trimmed", value: "1", tone: "warn" },
+      { label: "DOM Snapshot Hidden", value: "No", tone: "neutral" },
+      { label: "Cookie Values Redacted", value: "0", tone: "neutral" },
+    ]);
+    expect(model.privacy.detailRows).toEqual([
+      { label: "Sensitive field", value: "1", tone: "warn" },
+      { label: "DOM snapshot exceeded upload budget", value: "1", tone: "warn" },
+    ]);
+  });
+
+  test("groups repetitive body privacy notices for the overview", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com/app",
+      redactions: [
+        { path: "network[0].requestBody.password", reason: "Sensitive body value redacted" },
+        { path: "network[0].responseBody.token", reason: "Sensitive body value redacted" },
+        { path: "network[1].responseBody", reason: "Binary body omitted" },
+        { path: "network[1].requestHeaders.Cookie", reason: "Cookie value redacted" },
+        { path: "cdp.domSnapshot", reason: "DOM snapshot is sensitive by default" },
+      ],
+      truncations: [
+        { path: "network[0].responseBody", reason: "Body preview trimmed", originalBytes: 64000 },
+      ],
+    });
+
+    const model = buildShareViewModel(snapshot);
+
+    expect(model.privacy.summaryRows).toEqual([
+      { label: "Sensitive Values Redacted", value: "4", tone: "warn" },
+      { label: "Bodies Partially Shown", value: "2", tone: "ok" },
+      { label: "Binary Bodies Omitted", value: "1", tone: "warn" },
+      { label: "Payloads Trimmed", value: "1", tone: "warn" },
+      { label: "DOM Snapshot Hidden", value: "Yes", tone: "warn" },
+      { label: "Cookie Values Redacted", value: "1", tone: "warn" },
+    ]);
+    expect(model.privacy.detailRows).toEqual([
+      { label: "Sensitive body value redacted", value: "2", tone: "warn" },
+      { label: "Binary body omitted", value: "1", tone: "warn" },
+      { label: "Cookie value redacted", value: "1", tone: "warn" },
+      { label: "DOM snapshot is sensitive by default", value: "1", tone: "warn" },
+      { label: "Body preview trimmed", value: "1", tone: "warn" },
+    ]);
   });
 
   test("replaces unsafe page hrefs with a non-clickable fallback", () => {

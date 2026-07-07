@@ -11,8 +11,13 @@ describe("share page copy", () => {
     expect(sharePageSource).toContain("<span>Redacted Fields</span>");
     expect(sharePageSource).toContain("<em>{model.counts.truncations} size trims</em>");
     expect(sharePageSource).toContain("<h2>Privacy &amp; Size Changes</h2>");
+    expect(sharePageSource).toContain("privacy.summaryRows");
+    expect(sharePageSource).toContain("privacy.detailRows");
+    expect(sharePageSource).toContain("request.requestBody");
+    expect(sharePageSource).toContain("request.responseBody");
     expect(sharePageSource).toContain("No privacy redactions or size trims recorded");
     expect(sharePageSource).not.toContain('<label for="tab-summary">Summary</label>');
     expect(sharePageSource).not.toContain("<h2>Notices</h2>");
+    expect(sharePageSource).not.toContain("notice.path");
   });
 });

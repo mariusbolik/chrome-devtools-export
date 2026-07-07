@@ -5,6 +5,8 @@ export const REDACTED_VALUE = "[REDACTED]";
 
 const SENSITIVE_KEY_PATTERN =
   /authorization|cookie|set-cookie|token|secret|password|passwd|api[-_]?key|access[-_]?key|session|sid|jwt|credential/i;
+const BODY_PREVIEW_CHAR_LIMIT = 16_384;
+const BINARY_BODY_OMITTED = "[BINARY body omitted]";
 
 export interface NetworkRequestSnapshot {
   id: number;
@@ -230,8 +232,7 @@ export function redactSnapshot(
     redactions.push({ path: "cdp.domSnapshot", reason: "DOM snapshot is sensitive by default" });
   }
   if (next.cdp.cookies) {
-    next.cdp.cookies = REDACTED_VALUE;
-    redactions.push({ path: "cdp.cookies", reason: "CDP cookies are sensitive by default" });
+    next.cdp.cookies = redactCdpCookies(next.cdp.cookies, "cdp.cookies", redactions);
   }
 
   next.redactions = [...next.redactions, ...redactions];
@@ -373,15 +374,25 @@ function redactRecord(
   return Object.fromEntries(
     Object.entries(record).map(([key, value]) => {
       if (redactAllValues || SENSITIVE_KEY_PATTERN.test(key)) {
-        redactions.push({ path: `${path}.${key}`, reason: "Sensitive field" });
+        redactions.push({ path: `${path}.${key}`, reason: redactAllValues ? "Cookie value redacted" : "Sensitive field" });
         return [key, REDACTED_VALUE];
+      }
+      if (Array.isArray(value)) {
+        return [key, redactArray(value, `${path}.${key}`, redactions)];
       }
       if (isRecord(value)) {
         return [key, redactRecord(value, `${path}.${key}`, redactions)];
       }
+      if (typeof value === "string") {
+        return [key, redactStructuredTextValue(value, `${path}.${key}`, redactions, "Sensitive field")];
+      }
       return [key, value];
     })
   );
+}
+
+function redactArray(value: unknown[], path: string, redactions: SnapshotNotice[]): unknown[] {
+  return value.map((item, index) => redactUnknownValue(item, `${path}[${index}]`, redactions, "Sensitive field"));
 }
 
 function redactStringRecord(
@@ -391,11 +402,7 @@ function redactStringRecord(
 ): Record<string, string> {
   return Object.fromEntries(
     Object.entries(record).map(([key, value]) => {
-      if (SENSITIVE_KEY_PATTERN.test(key)) {
-        redactions.push({ path: `${path}.${key}`, reason: "Sensitive field" });
-        return [key, REDACTED_VALUE];
-      }
-      return [key, value];
+      return [key, redactHeaderValue(key, value, `${path}.${key}`, redactions)];
     })
   );
 }
@@ -403,11 +410,212 @@ function redactStringRecord(
 function redactBody(body: string | null, path: string, redactions: SnapshotNotice[]): string | null {
   if (!body) return body;
 
-  redactions.push({ path, reason: "Request and response bodies are sensitive by default" });
-  return REDACTED_VALUE;
+  if (isProbablyBinaryBody(body)) {
+    redactions.push({ path, reason: "Binary body omitted" });
+    return BINARY_BODY_OMITTED;
+  }
+
+  const json = parseJson(body);
+  if (json.ok) {
+    const redacted = redactUnknownValue(json.value, path, redactions, "Sensitive body value redacted");
+    return limitBodyPreview(JSON.stringify(redacted, null, 2), path, redactions);
+  }
+
+  if (looksLikeUrlEncodedBody(body)) {
+    return limitBodyPreview(redactUrlEncodedBody(body, path, redactions), path, redactions);
+  }
+
+  return limitBodyPreview(redactSensitiveText(body, path, redactions, "Sensitive body value redacted"), path, redactions);
 }
 
-function redactSensitiveText(text: string, path: string, redactions: SnapshotNotice[]): string {
+function redactHeaderValue(key: string, value: string, path: string, redactions: SnapshotNotice[]): string {
+  const lowerKey = key.toLowerCase();
+
+  if (lowerKey === "authorization" || lowerKey === "proxy-authorization") {
+    redactions.push({ path, reason: "Sensitive header value redacted" });
+    const scheme = value.match(/^\s*([A-Za-z]+)\s+(.+)$/);
+    return scheme ? `${scheme[1]} ${REDACTED_VALUE}` : REDACTED_VALUE;
+  }
+
+  if (lowerKey === "cookie") {
+    return redactCookieHeader(value, path, redactions);
+  }
+
+  if (lowerKey === "set-cookie") {
+    return redactSetCookieHeader(value, path, redactions);
+  }
+
+  if (SENSITIVE_KEY_PATTERN.test(key)) {
+    redactions.push({ path, reason: "Sensitive header value redacted" });
+    return REDACTED_VALUE;
+  }
+
+  return redactSensitiveText(value, path, redactions, "Sensitive header value redacted");
+}
+
+function redactCookieHeader(value: string, path: string, redactions: SnapshotNotice[]): string {
+  let changed = false;
+  const redacted = value
+    .split(";")
+    .map((part) => {
+      const trimmed = part.trim();
+      if (!trimmed) return part;
+      const separator = trimmed.indexOf("=");
+      if (separator === -1) return trimmed;
+      changed = true;
+      const name = trimmed.slice(0, separator).trim();
+      return `${name}=${REDACTED_VALUE}`;
+    })
+    .join("; ");
+
+  if (changed) {
+    redactions.push({ path, reason: "Cookie value redacted" });
+  }
+  return redacted;
+}
+
+function redactSetCookieHeader(value: string, path: string, redactions: SnapshotNotice[]): string {
+  const parts = value.split(";").map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 0) return value;
+
+  const separator = parts[0].indexOf("=");
+  if (separator === -1) return value;
+
+  const cookieName = parts[0].slice(0, separator).trim();
+  redactions.push({ path, reason: "Cookie value redacted" });
+  return [`${cookieName}=${REDACTED_VALUE}`, ...parts.slice(1)].join("; ");
+}
+
+function redactUrlEncodedBody(body: string, path: string, redactions: SnapshotNotice[]): string {
+  const params = new URLSearchParams(body);
+  for (const key of [...params.keys()]) {
+    const values = params.getAll(key);
+    params.delete(key);
+    for (const value of values) {
+      if (SENSITIVE_KEY_PATTERN.test(key)) {
+        params.append(key, REDACTED_VALUE);
+        redactions.push({ path: `${path}.${key}`, reason: "Sensitive body value redacted" });
+      } else {
+        params.append(key, redactSensitiveText(value, `${path}.${key}`, redactions, "Sensitive body value redacted"));
+      }
+    }
+  }
+  return params.toString();
+}
+
+function redactStructuredTextValue(
+  value: string,
+  path: string,
+  redactions: SnapshotNotice[],
+  reason: string
+): string {
+  const json = parseJson(value);
+  if (json.ok) {
+    const redacted = redactUnknownValue(json.value, path, redactions, reason);
+    return JSON.stringify(redacted, null, 2);
+  }
+
+  if (looksLikeUrlEncodedBody(value)) {
+    return redactUrlEncodedBody(value, path, redactions);
+  }
+
+  return redactSensitiveText(value, path, redactions, reason);
+}
+
+function redactUnknownValue(value: unknown, path: string, redactions: SnapshotNotice[], reason: string): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item, index) => redactUnknownValue(item, `${path}[${index}]`, redactions, reason));
+  }
+
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => {
+        const childPath = `${path}.${key}`;
+        if (SENSITIVE_KEY_PATTERN.test(key)) {
+          redactions.push({ path: childPath, reason });
+          return [key, REDACTED_VALUE];
+        }
+        return [key, redactUnknownValue(child, childPath, redactions, reason)];
+      })
+    );
+  }
+
+  if (typeof value === "string") {
+    return redactStructuredTextValue(value, path, redactions, reason);
+  }
+
+  return value;
+}
+
+function redactCdpCookies(value: unknown, path: string, redactions: SnapshotNotice[]): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item, index) => redactCdpCookies(item, `${path}[${index}]`, redactions));
+  }
+
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => {
+        const childPath = `${path}.${key}`;
+        if (key.toLowerCase() === "value" || SENSITIVE_KEY_PATTERN.test(key)) {
+          redactions.push({ path: childPath, reason: "Cookie value redacted" });
+          return [key, REDACTED_VALUE];
+        }
+        return [key, redactCdpCookies(child, childPath, redactions)];
+      })
+    );
+  }
+
+  return value;
+}
+
+function limitBodyPreview(body: string, path: string, redactions: SnapshotNotice[]): string {
+  if (body.length <= BODY_PREVIEW_CHAR_LIMIT) return body;
+  redactions.push({ path, reason: "Body preview trimmed", originalBytes: new TextEncoder().encode(body).byteLength });
+  return `${body.slice(0, BODY_PREVIEW_CHAR_LIMIT)}\n[TRUNCATED body preview]`;
+}
+
+function isProbablyBinaryBody(body: string): boolean {
+  if (/^data:(?:image|audio|video|font)\//i.test(body)) return true;
+  if (/^data:application\/(?:octet-stream|pdf|zip)/i.test(body)) return true;
+  if (body.includes("\0")) return true;
+
+  const sample = body.slice(0, 1024);
+  if (!sample) return false;
+  let controlCharacters = 0;
+  for (const char of sample) {
+    const code = char.charCodeAt(0);
+    if (code < 32 && char !== "\n" && char !== "\r" && char !== "\t") {
+      controlCharacters += 1;
+    }
+  }
+  return controlCharacters / sample.length > 0.05;
+}
+
+function looksLikeUrlEncodedBody(body: string): boolean {
+  if (!/(^|&)[^=&\s]+=[^&]*/.test(body)) return false;
+  try {
+    return [...new URLSearchParams(body).keys()].length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function parseJson(value: string): { ok: true; value: unknown } | { ok: false } {
+  const trimmed = value.trim();
+  if (!trimmed || !"[{".includes(trimmed[0])) return { ok: false };
+  try {
+    return { ok: true, value: JSON.parse(value) };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function redactSensitiveText(
+  text: string,
+  path: string,
+  redactions: SnapshotNotice[],
+  reason = "Sensitive text content"
+): string {
   let next = text;
   const before = next;
 
@@ -422,7 +630,7 @@ function redactSensitiveText(text: string, path: string, redactions: SnapshotNot
   );
 
   if (next !== before) {
-    redactions.push({ path, reason: "Sensitive text content" });
+    redactions.push({ path, reason });
   }
   return next;
 }

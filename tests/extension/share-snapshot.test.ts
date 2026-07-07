@@ -82,8 +82,8 @@ describe("extension share snapshot helpers", () => {
             time: 5,
             requestHeaders: { Authorization: "Bearer secret" },
             responseHeaders: {},
-            requestBody: "secret body",
-            responseBody: "secret response",
+            requestBody: JSON.stringify({ password: "secret body", email: "user@example.com" }),
+            responseBody: JSON.stringify({ token: "secret response", status: "ok" }),
           },
         ],
         cdp: {
@@ -101,6 +101,8 @@ describe("extension share snapshot helpers", () => {
     expect(serialized).not.toContain("api_key=secret");
     expect(serialized).not.toContain("secret body");
     expect(serialized).not.toContain("secret response");
+    expect(result.snapshot.network[0].requestBody).toContain('"email": "user@example.com"');
+    expect(result.snapshot.network[0].responseBody).toContain('"status": "ok"');
     expect(serialized).not.toContain("dom-secret");
   });
 

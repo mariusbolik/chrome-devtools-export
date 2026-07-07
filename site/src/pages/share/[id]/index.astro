@@ -128,15 +128,30 @@ const pathFor = (url: string) => {
                 <div><dt>Schema</dt><dd>{snapshot.schemaVersion}</dd></div>
               </dl>
               <h2>Privacy &amp; Size Changes</h2>
-              <div class="notice-list">
-                {[...snapshot.redactions, ...snapshot.truncations].map((notice) => (
-                  <div class="notice-row">
-                    <span>{notice.path}</span>
-                    <em>{notice.reason}</em>
+              <div class="privacy-grid">
+                {model.privacy.summaryRows.map((row) => (
+                  <div class={`privacy-card ${row.tone}`}>
+                    <span>{row.label}</span>
+                    <strong>{row.value}</strong>
                   </div>
                 ))}
-                {snapshot.redactions.length + snapshot.truncations.length === 0 && <p class="empty">No privacy redactions or size trims recorded</p>}
               </div>
+              {model.privacy.detailRows.length > 0 ? (
+                <details class="raw-details">
+                  <summary><span>Grouped Details</span><em>{model.privacy.detailRows.length} groups</em></summary>
+                  <div class="privacy-detail-table">
+                    <div class="privacy-detail-row table-header"><span>Change</span><span>Count</span></div>
+                    {model.privacy.detailRows.map((row) => (
+                      <div class={`privacy-detail-row ${row.tone}`}>
+                        <span>{row.label}</span>
+                        <strong>{row.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : (
+                <p class="empty">No privacy redactions or size trims recorded</p>
+              )}
             </div>
 
             <div class="panel screenshot-panel">
@@ -153,12 +168,32 @@ const pathFor = (url: string) => {
             <div class="panel network-panel">
               <div class="row header-row"><span>Method</span><span>Status</span><span>Path</span><span>Time</span></div>
               {snapshot.network.map((request) => (
-                <div class="row">
-                  <span class={`method ${request.method.toLowerCase()}`}>{request.method}</span>
-                  <span class={request.status >= 400 ? "status error" : request.status >= 300 ? "status redirect" : "status ok"}>{request.status}</span>
-                  <span class="path">{pathFor(request.url)}</span>
-                  <span>{request.time}ms</span>
-                </div>
+                <details class="network-item">
+                  <summary class="row network-summary">
+                    <span class={`method ${request.method.toLowerCase()}`}>{request.method}</span>
+                    <span class={request.status >= 400 ? "status error" : request.status >= 300 ? "status redirect" : "status ok"}>{request.status}</span>
+                    <span class="path">{pathFor(request.url)}</span>
+                    <span>{request.time}ms</span>
+                  </summary>
+                  <div class="network-details">
+                    <section class="ui-section">
+                      <h2>Request Body</h2>
+                      {request.requestBody ? <pre>{request.requestBody}</pre> : <p class="empty compact">No request body captured</p>}
+                    </section>
+                    <section class="ui-section">
+                      <h2>Response Body</h2>
+                      {request.responseBody ? <pre>{request.responseBody}</pre> : <p class="empty compact">No response body captured</p>}
+                    </section>
+                    <section class="ui-section">
+                      <h2>Request Headers</h2>
+                      {Object.keys(request.requestHeaders).length > 0 ? <pre>{JSON.stringify(request.requestHeaders, null, 2)}</pre> : <p class="empty compact">No request headers captured</p>}
+                    </section>
+                    <section class="ui-section">
+                      <h2>Response Headers</h2>
+                      {Object.keys(request.responseHeaders).length > 0 ? <pre>{JSON.stringify(request.responseHeaders, null, 2)}</pre> : <p class="empty compact">No response headers captured</p>}
+                    </section>
+                  </div>
+                </details>
               ))}
               {snapshot.network.length === 0 && <p class="empty">No requests captured</p>}
             </div>
@@ -529,6 +564,63 @@ const pathFor = (url: string) => {
     color: var(--yellow);
   }
 
+  .privacy-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(120px, 1fr));
+    border-bottom: 1px solid var(--border);
+  }
+
+  .privacy-card {
+    min-height: 66px;
+    padding: 10px 12px;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .privacy-card span {
+    display: block;
+    color: var(--text-dim);
+  }
+
+  .privacy-card strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .privacy-card.ok strong {
+    color: var(--green);
+  }
+
+  .privacy-card.warn strong {
+    color: var(--yellow);
+  }
+
+  .privacy-detail-table {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 90px;
+  }
+
+  .privacy-detail-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    border-top: 1px solid var(--border);
+  }
+
+  .privacy-detail-row span,
+  .privacy-detail-row strong {
+    min-width: 0;
+    padding: 7px 10px;
+    overflow-wrap: anywhere;
+  }
+
+  .privacy-detail-row strong {
+    color: var(--yellow);
+    font-weight: 600;
+  }
+
   .details {
     flex: 1;
     min-height: 0;
@@ -640,6 +732,27 @@ const pathFor = (url: string) => {
   .row {
     grid-template-columns: 72px 56px minmax(180px, 1fr) 70px;
     align-items: center;
+  }
+
+  .network-item {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .network-summary {
+    list-style: none;
+    background: var(--bg);
+  }
+
+  .network-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .network-item[open] .network-summary {
+    background: var(--bg-hover);
+  }
+
+  .network-details {
+    border-top: 1px solid var(--border);
   }
 
   .header-row {
@@ -987,6 +1100,7 @@ const pathFor = (url: string) => {
     }
 
     .summary-grid,
+    .privacy-grid,
     .key-values {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1003,6 +1117,8 @@ const pathFor = (url: string) => {
     .storage-row,
     .kv-table,
     .kv-row,
+    .privacy-detail-table,
+    .privacy-detail-row,
     .asset-table,
     .asset-row {
       grid-template-columns: minmax(110px, 0.4fr) minmax(0, 1fr);

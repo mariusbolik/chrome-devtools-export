@@ -26,6 +26,8 @@ export interface StatusViewRow {
   tone: "error" | "neutral" | "ok" | "warn";
 }
 
+export type PrivacyViewRow = StatusViewRow;
+
 export interface CdpAssetViewRow {
   type: "Image" | "Script" | "Stylesheet";
   url: string;
@@ -115,6 +117,10 @@ export interface ShareViewModel {
   };
   cdp: CdpViewModel;
   environment: EnvironmentViewModel;
+  privacy: {
+    summaryRows: PrivacyViewRow[];
+    detailRows: PrivacyViewRow[];
+  };
 }
 
 const BROWSER_ICON_BASE = "https://cdn.jsdelivr.net/gh/alrra/browser-logos@main/src";
@@ -167,7 +173,57 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
     },
     cdp,
     environment: buildEnvironmentViewModel(snapshot),
+    privacy: buildPrivacyViewModel(snapshot),
   };
+}
+
+function buildPrivacyViewModel(snapshot: ShareSnapshot): ShareViewModel["privacy"] {
+  const redactions = snapshot.redactions;
+  const truncations = snapshot.truncations;
+  const binaryBodies = redactions.filter((notice) => notice.reason === "Binary body omitted").length;
+  const bodyPaths = new Set(
+    redactions
+      .filter((notice) => notice.reason === "Sensitive body value redacted")
+      .map((notice) => notice.path.match(/^network\[\d+\]\.(?:requestBody|responseBody)/)?.[0])
+      .filter((path): path is string => Boolean(path))
+  );
+  const cookieRedactions = redactions.filter((notice) => notice.reason === "Cookie value redacted").length;
+  const domSnapshotHidden = redactions.some((notice) => notice.path === "cdp.domSnapshot");
+  const trimmedPayloads = truncations.length + redactions.filter((notice) => notice.reason === "Body preview trimmed").length;
+  const sensitiveRedactions = redactions.length - binaryBodies;
+
+  return {
+    summaryRows: [
+      privacyRow("Sensitive Values Redacted", sensitiveRedactions, sensitiveRedactions > 0 ? "warn" : "neutral"),
+      privacyRow("Bodies Partially Shown", bodyPaths.size, bodyPaths.size > 0 ? "ok" : "neutral"),
+      privacyRow("Binary Bodies Omitted", binaryBodies, binaryBodies > 0 ? "warn" : "neutral"),
+      privacyRow("Payloads Trimmed", trimmedPayloads, trimmedPayloads > 0 ? "warn" : "neutral"),
+      {
+        label: "DOM Snapshot Hidden",
+        value: domSnapshotHidden ? "Yes" : "No",
+        tone: domSnapshotHidden ? "warn" : "neutral",
+      },
+      privacyRow("Cookie Values Redacted", cookieRedactions, cookieRedactions > 0 ? "warn" : "neutral"),
+    ],
+    detailRows: groupedNoticeRows([...redactions, ...truncations]),
+  };
+}
+
+function privacyRow(label: string, value: number, tone: PrivacyViewRow["tone"]): PrivacyViewRow {
+  return { label, value: String(value), tone };
+}
+
+function groupedNoticeRows(notices: ShareSnapshot["redactions"]): PrivacyViewRow[] {
+  const groups = new Map<string, number>();
+  for (const notice of notices) {
+    groups.set(notice.reason, (groups.get(notice.reason) ?? 0) + 1);
+  }
+
+  return [...groups.entries()].map(([label, count]) => ({
+    label,
+    value: String(count),
+    tone: "warn" as const,
+  }));
 }
 
 function buildStorageSections(storage: StorageSnapshot): StorageViewSection[] {
