@@ -41,4 +41,14 @@ describe("share page copy", () => {
     expect(sharePageSource).not.toContain("JSON.stringify(snapshot.cdp.domSnapshot ?? null");
     expect(sharePageSource).not.toContain("notice.path");
   });
+
+  test("keeps AI Summary as the last tab", () => {
+    const tabNavSource = sharePageSource.match(/<nav class="tabs"[\s\S]*?<\/nav>/)?.[0] ?? "";
+    const panelSource = sharePageSource.match(/<div class="panel[\s\S]*?<script is:inline>/)?.[0] ?? "";
+    const tabOrder = [...tabNavSource.matchAll(/data-tab="([^"]+)"/g)].map((match) => match[1]);
+    const panelOrder = [...panelSource.matchAll(/data-panel="([^"]+)"/g)].map((match) => match[1]);
+
+    expect(tabOrder.at(-1)).toBe("ai-summary");
+    expect(panelOrder.at(-1)).toBe("ai-summary");
+  });
 });

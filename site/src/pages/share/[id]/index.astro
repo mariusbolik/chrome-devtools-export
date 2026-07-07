@@ -93,7 +93,6 @@ const formatDate = (value: string | undefined) => {
 
               <nav class="tabs" role="tablist" aria-label="Snapshot sections">
                 <a id="triage-tab" href="#triage" role="tab" data-tab="triage" aria-controls="triage" aria-selected="true">Triage</a>
-                <a id="ai-summary-tab" href="#ai-summary" role="tab" data-tab="ai-summary" aria-controls="ai-summary" aria-selected="false">AI Summary</a>
                 <a id="page-tab" href="#page" role="tab" data-tab="page" aria-controls="page" aria-selected="false">Page Snapshot</a>
                 <a id="console-tab" href="#console" role="tab" data-tab="console" aria-controls="console" aria-selected="false">Console</a>
                 <a id="resources-tab" href="#resources" role="tab" data-tab="resources" aria-controls="resources" aria-selected="false">Resources</a>
@@ -102,6 +101,7 @@ const formatDate = (value: string | undefined) => {
                 <a id="performance-tab" href="#performance" role="tab" data-tab="performance" aria-controls="performance" aria-selected="false">Performance Summary</a>
                 <a id="environment-tab" href="#environment" role="tab" data-tab="environment" aria-controls="environment" aria-selected="false">Environment</a>
                 <a id="json-tab" href="#json" role="tab" data-tab="json" aria-controls="json" aria-selected="false">Raw JSON</a>
+                <a id="ai-summary-tab" href="#ai-summary" role="tab" data-tab="ai-summary" aria-controls="ai-summary" aria-selected="false">AI Summary</a>
               </nav>
             </div>
 
@@ -172,13 +172,6 @@ const formatDate = (value: string | undefined) => {
                   </details>
                 )}
               </section>
-            </div>
-
-            <div class="panel ai-summary-panel" id="ai-summary" data-panel="ai-summary" role="tabpanel" aria-labelledby="ai-summary-tab" hidden>
-              <div class="toolbar">
-                <button class="filter-chip" type="button" data-copy-target="aiSummaryText">Copy Summary</button>
-              </div>
-              <textarea id="aiSummaryText" class="ai-summary-text" readonly>{model.aiSummary}</textarea>
             </div>
 
             <div class="panel page-panel" id="page" data-panel="page" role="tabpanel" aria-labelledby="page-tab" hidden>
@@ -517,6 +510,13 @@ const formatDate = (value: string | undefined) => {
 
             <div class="panel json-panel" id="json" data-panel="json" role="tabpanel" aria-labelledby="json-tab" hidden>
               <pre>{JSON.stringify(snapshot, null, 2)}</pre>
+            </div>
+
+            <div class="panel ai-summary-panel" id="ai-summary" data-panel="ai-summary" role="tabpanel" aria-labelledby="ai-summary-tab" hidden>
+              <div class="toolbar">
+                <button class="filter-chip" type="button" data-copy-target="aiSummaryText">Copy Summary</button>
+              </div>
+              <textarea id="aiSummaryText" class="ai-summary-text" readonly>{model.aiSummary}</textarea>
             </div>
           </section>
         </main>

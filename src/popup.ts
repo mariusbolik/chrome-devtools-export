@@ -6,13 +6,10 @@ type ShareActiveTabResponse =
 
 const statusText = document.getElementById("statusText")!;
 const shareButton = document.getElementById("shareButton") as HTMLButtonElement;
-const openExportPanel = document.getElementById("openExportPanel") as HTMLButtonElement;
 const includeScreenshot = document.getElementById("includeScreenshot") as HTMLInputElement;
 const progress = document.getElementById("progress")!;
 const shareLink = document.getElementById("shareLink") as HTMLAnchorElement;
-const devtoolsHint = document.getElementById("devtoolsHint")!;
 const header = document.querySelector(".header")!;
-const DEVTOOLS_PANEL_HINT = "Open Chrome DevTools (Mac: Cmd+Option+I, Windows/Linux: Ctrl+Shift+I), then select the DevTools Export panel.";
 
 let state = createInitialPopupState();
 
@@ -21,14 +18,10 @@ function render(next: PopupState) {
   statusText.textContent = state.message;
   shareButton.disabled = state.buttonDisabled;
   shareButton.textContent = state.buttonText;
-  openExportPanel.disabled = state.optionsDisabled;
   includeScreenshot.checked = state.includeScreenshot;
   includeScreenshot.disabled = state.optionsDisabled;
   progress.hidden = state.status !== "sharing";
   header.classList.toggle("error", state.status === "error");
-  if (state.status === "sharing" || state.status === "success") {
-    devtoolsHint.hidden = true;
-  }
 
   if (state.shareUrl) {
     shareLink.href = state.shareUrl;
@@ -76,12 +69,6 @@ async function shareBugReport() {
 
 shareButton.addEventListener("click", () => {
   void shareBugReport();
-});
-
-openExportPanel.addEventListener("click", () => {
-  devtoolsHint.textContent = DEVTOOLS_PANEL_HINT;
-  devtoolsHint.hidden = false;
-  statusText.textContent = DEVTOOLS_PANEL_HINT;
 });
 
 includeScreenshot.addEventListener("change", () => {
