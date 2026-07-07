@@ -1,6 +1,6 @@
 {
   "name": "devtools-request-exporter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Chrome extension to export HTTP requests from DevTools",
   "type": "module",
   "scripts": {

@@ -57,10 +57,18 @@ describe("landing page", () => {
     expect(pageSource).toContain(".giant-store-button");
   });
 
-  test("renders required footer attribution links", () => {
-    expect(pageSource).toContain("Eyloo GmbH");
+  test("renders creator social links outside the footer and copyright text in the footer", () => {
+    expect(pageSource).toContain('<section class="creator-follow" aria-labelledby="creator-title">');
+    expect(pageSource).toContain('<h2 id="creator-title">Follow the creator</h2>');
     expect(pageSource).toContain("https://x.com/mariusbolik");
     expect(pageSource).toContain("https://www.linkedin.com/in/marius-bolik/");
+    expect(pageSource).toContain("@mariusbolik");
+    expect(pageSource).toContain("Marius Bolik");
+    expect(pageSource).toContain('class="social-icon x-icon"');
+    expect(pageSource).toContain('class="social-icon linkedin-icon"');
+    expect(pageSource).toContain("&copy; 2026 Eyloo GmbH. All rights reserved.");
+    expect(pageSource).not.toContain(">x.com/mariusbolik</a>");
+    expect(pageSource).not.toContain("<footer>\n      <span>Eyloo GmbH</span>");
   });
 
   test("references product screenshots from the public screenshots directory", () => {
@@ -103,6 +111,26 @@ describe("landing page", () => {
     expect(pageSource).not.toContain("The report is organized like the DevTools data they already use.");
     expect(pageSource).not.toContain(".steps li,\n  .trust-list div");
     expect(pageSource).not.toContain("min-height: 86px;");
+  });
+
+  test("uses blue icon boxes for solution steps and unboxed trust items with real SVG icons", () => {
+    expect(pageSource.match(/class="trust-item"/g)?.length).toBe(3);
+    expect(pageSource.match(/class="trust-icon"/g)?.length).toBe(3);
+    expect(pageSource).toContain('class="trust-icon" aria-hidden="true"');
+    expect(pageSource).toContain('class="trust-icon-svg currency-icon"');
+    expect(pageSource).toContain('class="trust-icon-svg clock-icon"');
+    expect(pageSource).toContain('class="trust-icon-svg shield-icon"');
+    expect(pageSource).toContain(".steps span,\n  .trust-icon");
+    expect(pageSource).toContain("border: 1px solid rgba(86, 156, 214, 0.55);");
+    expect(pageSource).toContain("background: rgba(86, 156, 214, 0.12);");
+    expect(pageSource).toContain("color: var(--blue);");
+    expect(pageSource).toContain(".trust-icon-svg");
+    expect(pageSource).not.toContain('<span class="trust-icon" aria-hidden="true">0</span>');
+    expect(pageSource).not.toContain('<span class="trust-icon" aria-hidden="true">7d</span>');
+    expect(pageSource).not.toContain('<span class="trust-icon" aria-hidden="true">***</span>');
+    expect(pageSource).not.toContain("rgba(78, 201, 176, 0.5)");
+    expect(pageSource).not.toContain("rgba(78, 201, 176, 0.1)");
+    expect(pageSource).not.toContain(".trust-list div {\n    border:");
   });
 
   test("presents the proof screenshots as a simple one-slide carousel", () => {

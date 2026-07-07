@@ -208,17 +208,38 @@ const softwareApplicationJsonLd = JSON.stringify(
             <h2 id="free-title">A free extension for shareable Chrome DevTools snapshots.</h2>
           </div>
           <div class="trust-list">
-            <div>
-              <strong>Completely free</strong>
-              <p>Install the Chrome extension and create share links without a paid plan.</p>
+            <div class="trust-item">
+              <span class="trust-icon" aria-hidden="true">
+                <svg class="trust-icon-svg currency-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-2.88-2.17c1.44 1.2 4.32 1.2 5.76 0 1.5-1.25.55-3.83-2.88-3.83s-4.38-2.58-2.88-3.83c1.44-1.2 4.32-1.2 5.76 0M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+                </svg>
+              </span>
+              <div>
+                <strong>Completely free</strong>
+                <p>Install the Chrome extension and create share links without a paid plan.</p>
+              </div>
             </div>
-            <div>
-              <strong>Unlisted, expiring links</strong>
-              <p>Share URLs are unlisted and snapshots expire instead of remaining available indefinitely.</p>
+            <div class="trust-item">
+              <span class="trust-icon" aria-hidden="true">
+                <svg class="trust-icon-svg clock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+                </svg>
+              </span>
+              <div>
+                <strong>Unlisted, expiring links</strong>
+                <p>Share URLs are unlisted and snapshots expire instead of remaining available indefinitely.</p>
+              </div>
             </div>
-            <div>
-              <strong>Default sensitive-value redaction</strong>
-              <p>Secrets, cookies, request bodies, response bodies, DOM snapshots, and sensitive query parameters are redacted by default.</p>
+            <div class="trust-item">
+              <span class="trust-icon" aria-hidden="true">
+                <svg class="trust-icon-svg shield-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.04a11.96 11.96 0 0 0 7.5 2.65c.18 2.7-.37 5.63-1.63 8.12C16.7 15.8 14.84 17.8 12 19.5c-2.84-1.7-4.7-3.7-5.87-6.02C4.87 11 4.32 8.06 4.5 5.36A11.96 11.96 0 0 0 12 2.71Z"></path>
+                </svg>
+              </span>
+              <div>
+                <strong>Default sensitive-value redaction</strong>
+                <p>Secrets, cookies, request bodies, response bodies, DOM snapshots, and sensitive query parameters are redacted by default.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -237,12 +258,33 @@ const softwareApplicationJsonLd = JSON.stringify(
           <span>Install free Chrome extension</span>
         </a>
       </section>
+
+      <section class="creator-follow" aria-labelledby="creator-title">
+        <div class="creator-inner">
+          <div>
+            <p class="eyebrow">Creator</p>
+            <h2 id="creator-title">Follow the creator</h2>
+          </div>
+          <div class="creator-links">
+            <a class="creator-link" href="https://x.com/mariusbolik">
+              <svg class="social-icon x-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="currentColor" d="M18.24 2H21.5l-7.1 8.12L22.75 22h-6.54l-5.12-6.7L5.23 22H1.98l7.6-8.69L1.5 2h6.7l4.63 6.12L18.24 2Zm-1.14 17.9h1.8L7.22 4H5.29L17.1 19.9Z"></path>
+              </svg>
+              <span>@mariusbolik</span>
+            </a>
+            <a class="creator-link" href="https://www.linkedin.com/in/marius-bolik/">
+              <svg class="social-icon linkedin-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="currentColor" d="M6.94 8.98H3.74V20h3.2V8.98ZM5.34 4a1.86 1.86 0 1 0 0 3.72A1.86 1.86 0 0 0 5.34 4Zm6.83 4.98H9.11V20h3.2v-5.45c0-1.44.27-2.83 2.05-2.83 1.76 0 1.78 1.64 1.78 2.92V20h3.2v-6.04c0-2.96-.64-5.24-4.1-5.24-1.66 0-2.78.91-3.24 1.78h-.04l.21-1.52Z"></path>
+              </svg>
+              <span>Marius Bolik</span>
+            </a>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer>
-      <span>Eyloo GmbH</span>
-      <a href="https://x.com/mariusbolik">x.com/mariusbolik</a>
-      <a href="https://www.linkedin.com/in/marius-bolik/">LinkedIn</a>
+      <span>&copy; 2026 Eyloo GmbH. All rights reserved.</span>
     </footer>
     <script is:inline>
       (() => {
@@ -629,12 +671,6 @@ const softwareApplicationJsonLd = JSON.stringify(
     list-style: none;
   }
 
-  .trust-list div {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg-light);
-  }
-
   .steps li {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr);
@@ -642,20 +678,30 @@ const softwareApplicationJsonLd = JSON.stringify(
     align-items: start;
   }
 
-  .steps span {
-    grid-row: span 2;
+  .steps span,
+  .trust-icon {
     width: 30px;
     height: 30px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgba(78, 201, 176, 0.5);
+    border: 1px solid rgba(86, 156, 214, 0.55);
     border-radius: 4px;
-    background: rgba(78, 201, 176, 0.1);
-    color: var(--green);
+    background: rgba(86, 156, 214, 0.12);
+    color: var(--blue);
     font-family: "SF Mono", Monaco, Consolas, monospace;
     font-size: 12px;
     font-weight: 700;
+  }
+
+  .steps span {
+    grid-row: span 2;
+  }
+
+  .trust-icon-svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
   }
 
   .steps strong,
@@ -794,8 +840,11 @@ const softwareApplicationJsonLd = JSON.stringify(
     gap: 10px;
   }
 
-  .trust-list div {
-    padding: 16px;
+  .trust-item {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    column-gap: 12px;
+    align-items: start;
   }
 
   .trust-list p {
@@ -825,20 +874,65 @@ const softwareApplicationJsonLd = JSON.stringify(
     height: 1.35em;
   }
 
-  footer {
+  .creator-follow {
+    border-bottom: 1px solid var(--border);
+    background: #191a1a;
+  }
+
+  .creator-inner {
+    width: min(1180px, calc(100vw - 32px));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 22px;
+    margin: 0 auto;
+    padding: clamp(34px, 6vw, 58px) 0;
+  }
+
+  .creator-inner h2 {
+    font-size: clamp(24px, 3vw, 34px);
+  }
+
+  .creator-links {
     display: flex;
     flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .creator-link {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 13px;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    background: var(--bg-panel);
+    color: var(--text);
+    font-weight: 650;
+  }
+
+  .creator-link:hover,
+  .creator-link:focus-visible {
+    border-color: rgba(86, 156, 214, 0.72);
+    color: var(--text-bright);
+    outline: none;
+  }
+
+  .social-icon {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    color: var(--blue);
+  }
+
+  footer {
+    display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px 18px;
     padding: 22px 16px;
     background: var(--bg-light);
     color: var(--text-dim);
-    border-top: 1px solid var(--border);
-  }
-
-  footer a:hover {
-    color: var(--blue);
   }
 
   @media (max-width: 880px) {
@@ -859,6 +953,11 @@ const softwareApplicationJsonLd = JSON.stringify(
 
     .compact-shot {
       justify-self: start;
+    }
+
+    .creator-inner {
+      align-items: start;
+      flex-direction: column;
     }
 
     .proof-arrow {
@@ -884,7 +983,8 @@ const softwareApplicationJsonLd = JSON.stringify(
     }
 
     .hero-grid,
-    .section-inner {
+    .section-inner,
+    .creator-inner {
       width: min(100vw - 24px, 1180px);
     }
 
@@ -893,6 +993,11 @@ const softwareApplicationJsonLd = JSON.stringify(
     }
 
     .button {
+      width: 100%;
+    }
+
+    .creator-links,
+    .creator-link {
       width: 100%;
     }
 
