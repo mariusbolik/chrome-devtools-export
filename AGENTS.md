@@ -4,8 +4,8 @@
 
 - This repo contains a Chrome MV3 extension plus an Astro/Cloudflare Worker share site.
 - The extension captures DevTools-style debugging data: console logs, network/resource timing, storage metadata, installed extensions, environment details, CDP data, and optional screenshots.
-- The share site stores snapshots in Cloudflare R2 and renders them at `https://devtools-export.mcb-software.workers.dev/share/<id>/`.
-- The intended custom domain is `devtoolsexport.com`, but the active deployed Worker URL is currently `https://devtools-export.mcb-software.workers.dev`.
+- The share site stores snapshots in Cloudflare R2 and renders them at `https://devtoolsexport.com/share/<id>/`.
+- Production share links should use `https://devtoolsexport.com`; do not use the `workers.dev` subdomain in extension or site URLs.
 
 ## Important Paths
 
@@ -57,6 +57,7 @@
 - Worker name: `devtools-export`.
 - R2 bucket: `devtools-export-shares`.
 - `site/wrangler.toml` sets `remote = true` on the `SNAPSHOTS` R2 binding so local dev can read/write the remote bucket.
+- `site/wrangler.toml` routes `devtoolsexport.com` as a Worker custom domain and sets `workers_dev = false`.
 - Share objects are stored under `snapshots/<id>.json`.
 - The Worker enforces expiry at read time; R2 lifecycle also expires old snapshots.
 - Use `.env` Cloudflare credentials already present in the workspace when deploying.

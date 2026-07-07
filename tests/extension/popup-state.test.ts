@@ -42,7 +42,7 @@ describe("popup state", () => {
     expect(
       reducePopupState(createInitialPopupState(), {
         type: "success",
-        url: "https://devtools-export.mcb-software.workers.dev/share/AbC234xy/",
+        url: "https://devtoolsexport.com/share/AbC234xy/",
       })
     ).toEqual({
       status: "success",
@@ -51,7 +51,7 @@ describe("popup state", () => {
       includeScreenshot: true,
       optionsDisabled: false,
       message: "Bug report link ready.",
-      shareUrl: "https://devtools-export.mcb-software.workers.dev/share/AbC234xy/",
+      shareUrl: "https://devtoolsexport.com/share/AbC234xy/",
     });
   });
 
