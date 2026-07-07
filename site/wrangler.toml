@@ -12,3 +12,4 @@ PUBLIC_BASE_URL = "https://devtools-export.mcb-software.workers.dev"
 [[r2_buckets]]
 binding = "SNAPSHOTS"
 bucket_name = "devtools-export-shares"
+remote = true

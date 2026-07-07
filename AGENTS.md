@@ -56,6 +56,7 @@
 
 - Worker name: `devtools-export`.
 - R2 bucket: `devtools-export-shares`.
+- `site/wrangler.toml` sets `remote = true` on the `SNAPSHOTS` R2 binding so local dev can read/write the remote bucket.
 - Share objects are stored under `snapshots/<id>.json`.
 - The Worker enforces expiry at read time; R2 lifecycle also expires old snapshots.
 - Use `.env` Cloudflare credentials already present in the workspace when deploying.
