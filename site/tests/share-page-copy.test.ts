@@ -51,4 +51,13 @@ describe("share page copy", () => {
     expect(tabOrder.at(-1)).toBe("ai-summary");
     expect(panelOrder.at(-1)).toBe("ai-summary");
   });
+
+  test("scrolls hash targets inside the active panel below the sticky header", () => {
+    expect(sharePageSource).toContain("scrollTargetIntoPanelView");
+    expect(sharePageSource).toContain("targetRect.top - panelRect.top + panel.scrollTop");
+    expect(sharePageSource).toContain("panel.scrollTo({");
+    expect(sharePageSource).not.toContain('target.scrollIntoView({ block: "start" })');
+    expect(sharePageSource).toMatch(/\.app-shell\s*{[\s\S]*height: 100vh;/);
+    expect(sharePageSource).toMatch(/\.details\s*{[\s\S]*overflow: hidden;/);
+  });
 });

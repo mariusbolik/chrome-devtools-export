@@ -547,6 +547,18 @@ const formatDate = (value: string | undefined) => {
           if (ownerPanel) return ownerPanel.getAttribute("data-panel") || "triage";
           return aliases[key] || key;
         };
+        const scrollTargetIntoPanelView = (target, panel) => {
+          if (!(target instanceof HTMLElement) || !(panel instanceof HTMLElement)) return;
+          const panelRect = panel.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          const top = targetRect.top - panelRect.top + panel.scrollTop;
+          panel.scrollTo({
+            top: Math.max(0, top),
+            left: panel.scrollLeft,
+            behavior: "auto",
+          });
+          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        };
         const selectTab = (hash, focus = false) => {
           const targetKey = getHashKey(hash);
           const key = normalizeTab(hash);
@@ -570,7 +582,7 @@ const formatDate = (value: string | undefined) => {
             const details = target.closest("details");
             if (details instanceof HTMLDetailsElement) details.open = true;
             if (target instanceof HTMLDetailsElement) target.open = true;
-            target.scrollIntoView({ block: "start" });
+            scrollTargetIntoPanelView(target, panel);
             if (focus && target instanceof HTMLElement) target.focus();
           } else if (focus && selected instanceof HTMLElement) {
             selected.focus();
@@ -708,9 +720,10 @@ const formatDate = (value: string | undefined) => {
   }
 
   .app-shell {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .sticky-shell {
@@ -895,6 +908,7 @@ const formatDate = (value: string | undefined) => {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .tabs {
