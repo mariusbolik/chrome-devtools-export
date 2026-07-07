@@ -146,7 +146,11 @@ const softwareApplicationJsonLd = JSON.stringify(
               </button>
 
               <article id="proof-network-slide" data-proof-slide="network" class="proof-slide active">
-                <figure class="screenshot-frame">
+                <figure class="browser-frame screenshot-frame">
+                  <div class="browser-bar" aria-label="Share URL">
+                    <span class="browser-controls" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span class="browser-url">https://devtoolsexport.com/share/a7k9m2q4/</span>
+                  </div>
                   <img src="/screenshots/share-network.png" alt="Shared report network tab showing request status, method, source, type, size, and timing" />
                 </figure>
                 <div class="proof-copy">
@@ -156,7 +160,11 @@ const softwareApplicationJsonLd = JSON.stringify(
               </article>
 
               <article id="proof-console-slide" data-proof-slide="console" hidden class="proof-slide">
-                <figure class="screenshot-frame">
+                <figure class="browser-frame screenshot-frame">
+                  <div class="browser-bar" aria-label="Share URL">
+                    <span class="browser-controls" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span class="browser-url">https://devtoolsexport.com/share/a7k9m2q4/</span>
+                  </div>
                   <img src="/screenshots/share-console-logs.png" alt="Shared report console tab showing captured errors and warnings" />
                 </figure>
                 <div class="proof-copy">
@@ -166,7 +174,11 @@ const softwareApplicationJsonLd = JSON.stringify(
               </article>
 
               <article id="proof-summary-slide" data-proof-slide="summary" hidden class="proof-slide">
-                <figure class="screenshot-frame">
+                <figure class="browser-frame screenshot-frame">
+                  <div class="browser-bar" aria-label="Share URL">
+                    <span class="browser-controls" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span class="browser-url">https://devtoolsexport.com/share/a7k9m2q4/</span>
+                  </div>
                   <img src="/screenshots/share-ai-summary.png" alt="Shared report AI summary tab with a compact debugging brief" />
                 </figure>
                 <div class="proof-copy">
@@ -467,6 +479,60 @@ const softwareApplicationJsonLd = JSON.stringify(
     height: auto;
   }
 
+  .browser-frame {
+    background: #151718;
+  }
+
+  .browser-bar {
+    min-height: 34px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-hover);
+  }
+
+  .browser-controls {
+    display: flex;
+    gap: 6px;
+  }
+
+  .browser-controls span {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+  }
+
+  .browser-controls span:nth-child(1) {
+    background: var(--red);
+  }
+
+  .browser-controls span:nth-child(2) {
+    background: var(--yellow);
+  }
+
+  .browser-controls span:nth-child(3) {
+    background: var(--green);
+  }
+
+  .browser-url {
+    min-width: 0;
+    display: block;
+    padding: 3px 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .hero-shot {
     align-self: center;
   }
@@ -657,7 +723,7 @@ const softwareApplicationJsonLd = JSON.stringify(
   }
 
   .proof-arrow-next {
-    right: 12px;
+    right: calc(25% + 44px);
   }
 
   .proof-dots {
@@ -757,6 +823,10 @@ const softwareApplicationJsonLd = JSON.stringify(
     .proof-arrow {
       top: min(34vw, 240px);
     }
+
+    .proof-arrow-next {
+      right: 12px;
+    }
   }
 
   @media (max-width: 560px) {
@@ -787,6 +857,26 @@ const softwareApplicationJsonLd = JSON.stringify(
 
     .button {
       width: 100%;
+    }
+
+    .browser-bar {
+      min-height: 31px;
+      gap: 8px;
+      padding: 6px 8px;
+    }
+
+    .browser-controls {
+      gap: 4px;
+    }
+
+    .browser-controls span {
+      width: 7px;
+      height: 7px;
+    }
+
+    .browser-url {
+      padding-inline: 8px;
+      font-size: 10px;
     }
 
     .proof-arrow {

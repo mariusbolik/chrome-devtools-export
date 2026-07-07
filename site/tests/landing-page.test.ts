@@ -90,11 +90,22 @@ describe("landing page", () => {
     expect(pageSource).toContain("[data-proof-prev]");
     expect(pageSource).toContain("[data-proof-next]");
     expect(pageSource).toContain("grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.5fr);");
+    expect(pageSource).toContain("right: calc(25% + 44px);");
+    expect(pageSource).toContain("right: 12px;");
     expect(pageSource).toContain(".proof-slide[hidden]");
     expect(pageSource).not.toContain('class="proof-slide-nav"');
     expect(pageSource).not.toContain('class="proof-tab');
     expect(pageSource).not.toContain('class="proof-track"');
     expect(pageSource).not.toContain("scroll-snap-type");
     expect(pageSource).not.toContain('class="proof-grid"');
+  });
+
+  test("shows share report screenshots inside a browser frame with the share URL", () => {
+    expect(pageSource.match(/class="browser-frame screenshot-frame"/g)?.length).toBe(3);
+    expect(pageSource.match(/class="browser-bar"/g)?.length).toBe(3);
+    expect(pageSource.match(/class="browser-url"/g)?.length).toBe(3);
+    expect(pageSource.match(/https:\/\/devtoolsexport\.com\/share\/a7k9m2q4\//g)?.length).toBe(3);
+    expect(pageSource).toContain(".browser-bar");
+    expect(pageSource).toContain(".browser-url");
   });
 });
