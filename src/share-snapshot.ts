@@ -14,6 +14,7 @@ import {
   type ShareSnapshot,
   type StorageSnapshot,
 } from "../shared/snapshot";
+import { withNetworkFailureConsoleLogs } from "./network-console";
 
 export const SHARE_ENDPOINT = "https://devtoolsexport.com/api/share";
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -100,7 +101,7 @@ export async function shareDevtoolsSnapshot(options: ShareSnapshotOptions): Prom
       environment: collectRuntimeEnvironment(page),
       installedExtensions,
       network: options.networkRequests,
-      console: options.consoleLogs.map((entry) => ({ ...entry, source: entry.source ?? "content" })),
+      console: withNetworkFailureConsoleLogs(options.consoleLogs, options.networkRequests, page.url).map((entry) => ({ ...entry, source: entry.source ?? "content" })),
       storage,
       cdp,
     },

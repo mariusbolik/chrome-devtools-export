@@ -22,5 +22,15 @@
       "bucket_name": "devtools-export-shares",
       "remote": true
     }
+  ],
+  "ratelimits": [
+    {
+      "name": "SHARE_CREATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 20,
+        "period": 60
+      }
+    }
   ]
 }

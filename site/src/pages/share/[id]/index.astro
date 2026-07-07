@@ -1,5 +1,6 @@
 ---
 import { env } from "cloudflare:workers";
+import { applyShareReadCacheHeaders } from "../../../lib/share-cache";
 import { loadSharedSnapshot, type ShareApiEnv } from "../../../lib/share-api";
 import { buildShareViewModel } from "../../../lib/share-view";
 
@@ -8,6 +9,9 @@ export const prerender = false;
 const snapshot = await loadSharedSnapshot(Astro.params.id ?? "", env as unknown as ShareApiEnv);
 if (!snapshot) {
   Astro.response.status = 404;
+  Astro.response.headers.set("cache-control", "no-store");
+} else {
+  applyShareReadCacheHeaders(Astro.response.headers, snapshot.expiresAt);
 }
 
 const model = snapshot ? buildShareViewModel(snapshot) : null;

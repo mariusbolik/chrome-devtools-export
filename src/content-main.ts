@@ -1,23 +1,65 @@
-import { formatConsoleMessage } from "./console-format";
+import { formatConsoleMessageWithCallStack } from "./console-format";
+import { DEVTOOLS_EXPORT_LOGGER_VERSION } from "./logger-version";
+
+const CONSOLE_METHODS = ["log", "warn", "error", "info", "debug"] as const;
+
+type ConsoleMethod = typeof CONSOLE_METHODS[number];
+type ConsoleOriginals = Record<ConsoleMethod, (...args: unknown[]) => void>;
+
+interface LoggerOriginals {
+  console: ConsoleOriginals;
+  fetch: typeof window.fetch;
+  XMLHttpRequest: typeof XMLHttpRequest;
+}
+
+interface LoggerWindow {
+  __DEVTOOLS_EXPORT_LOGGER__?: boolean;
+  __DEVTOOLS_EXPORT_LOGGER_VERSION__?: string;
+  __DEVTOOLS_EXPORT_ORIGINALS__?: LoggerOriginals;
+  __DEVTOOLS_EXPORT_RESTORE__?: () => void;
+}
 
 (function () {
   "use strict";
 
-  if ((window as unknown as { __DEVTOOLS_EXPORT_LOGGER__?: boolean }).__DEVTOOLS_EXPORT_LOGGER__) {
+  const loggerWindow = window as unknown as LoggerWindow;
+  if (loggerWindow.__DEVTOOLS_EXPORT_LOGGER_VERSION__ === DEVTOOLS_EXPORT_LOGGER_VERSION) {
     return;
   }
 
-  (window as unknown as { __DEVTOOLS_EXPORT_LOGGER__?: boolean }).__DEVTOOLS_EXPORT_LOGGER__ = true;
+  try {
+    loggerWindow.__DEVTOOLS_EXPORT_RESTORE__?.();
+  } catch {
+    // If a previous install cannot be restored, continue with the current page functions.
+  }
 
-  const originalConsole = {
-    log: console.log,
-    warn: console.warn,
-    error: console.error,
-    info: console.info,
-    debug: console.debug,
+  const originals = loggerWindow.__DEVTOOLS_EXPORT_ORIGINALS__ ?? {
+    console: {
+      log: console.log,
+      warn: console.warn,
+      error: console.error,
+      info: console.info,
+      debug: console.debug,
+    },
+    fetch: window.fetch,
+    XMLHttpRequest: window.XMLHttpRequest,
   };
-  const originalFetch = window.fetch;
-  const OriginalXMLHttpRequest = window.XMLHttpRequest;
+  loggerWindow.__DEVTOOLS_EXPORT_ORIGINALS__ = originals;
+  loggerWindow.__DEVTOOLS_EXPORT_LOGGER__ = true;
+  loggerWindow.__DEVTOOLS_EXPORT_LOGGER_VERSION__ = DEVTOOLS_EXPORT_LOGGER_VERSION;
+
+  const originalConsole = originals.console;
+  const originalFetch = originals.fetch;
+  const OriginalXMLHttpRequest = originals.XMLHttpRequest;
+
+  loggerWindow.__DEVTOOLS_EXPORT_RESTORE__ = () => {
+    CONSOLE_METHODS.forEach((method) => {
+      console[method] = originalConsole[method] as Console[typeof method];
+    });
+    window.fetch = originalFetch;
+    window.XMLHttpRequest = OriginalXMLHttpRequest;
+  };
+
   const BODY_PREVIEW_CHAR_LIMIT = 16_384;
 
   const postLog = (type: string, message: string) => {
@@ -148,6 +190,7 @@ import { formatConsoleMessage } from "./console-format";
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const startedAt = performance.now();
     const timestamp = Date.now();
+    const callStack = new Error().stack;
     const url = requestInputToUrl(input);
     const method = requestInputToMethod(input, init);
     const requestHeaders = requestHeadersForFetch(input, init);
@@ -190,6 +233,8 @@ import { formatConsoleMessage } from "./console-format";
         responseHeaders: {},
         requestBody,
         responseBody: null,
+        error: error instanceof Error ? error.message : String(error),
+        stackTrace: callStack,
       });
       throw error;
     }
@@ -220,6 +265,7 @@ import { formatConsoleMessage } from "./console-format";
     xhr.send = ((body?: Document | XMLHttpRequestBodyInit | null) => {
       timestamp = Date.now();
       startedAt = performance.now();
+      const callStack = new Error().stack;
       const requestBody = bodyInitToTextSync(body);
       xhr.addEventListener("loadend", () => {
         let responseBody: string | null = null;
@@ -243,6 +289,7 @@ import { formatConsoleMessage } from "./console-format";
           responseHeaders: parseRawHeaders(xhr.getAllResponseHeaders()),
           requestBody,
           responseBody,
+          stackTrace: xhr.status ? undefined : callStack,
         });
       }, { once: true });
       originalSend.call(xhr, body ?? null);
@@ -259,13 +306,14 @@ import { formatConsoleMessage } from "./console-format";
     DONE: { value: OriginalXMLHttpRequest.DONE },
   });
 
-  ["log", "warn", "error", "info", "debug"].forEach((method) => {
-    const original = originalConsole[method as keyof typeof originalConsole];
-    console[method as keyof Console] = (...args: unknown[]) => {
+  CONSOLE_METHODS.forEach((method) => {
+    const original = originalConsole[method];
+    console[method] = ((...args: unknown[]) => {
+      const callStack = args.some((arg) => arg instanceof Error) ? new Error().stack : undefined;
       original.apply(console, args as unknown as []);
-      const message = formatConsoleMessage(args);
+      const message = formatConsoleMessageWithCallStack(args, callStack);
       postLog(method, message);
-    };
+    }) as Console[typeof method];
   });
 
   window.addEventListener("error", (event) => {

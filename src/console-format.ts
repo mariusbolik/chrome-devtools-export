@@ -38,14 +38,18 @@ const safeStringify = (value: unknown, depth = 0): string => {
 
 export const normalizeConsoleText = (value: string): string => {
   const trimmed = value.trim();
-  const emptyError = trimmed.match(/^(Error|[A-Z][A-Za-z]*Error):$/);
-  return emptyError?.[1] ?? value;
+  const normalized = trimmed.replace(/^(Error|[A-Z][A-Za-z]*Error):\s*(?=\n|$)/, "$1");
+  return normalized !== trimmed ? normalized : value;
 };
+
+const GENERIC_ERROR_TEXT = /^(Error|[A-Z][A-Za-z]*Error)$/;
+const EXTENSION_STACK_FRAME = /content-main\.(?:js|ts)|console\.<computed>/;
+const CALL_STACK_LIMIT = 8;
 
 const formatError = (error: Error): string => {
   const title = [error.name || "Error", error.message].filter(Boolean).join(": ");
   if (!error.stack) return normalizeConsoleText(title);
-  return error.stack.startsWith(title) ? error.stack : `${title}\n${error.stack}`;
+  return error.stack.startsWith(title) ? normalizeConsoleText(error.stack) : `${title}\n${error.stack}`;
 };
 
 export const formatConsoleMessage = (args: unknown[]): string => {
@@ -63,4 +67,17 @@ export const formatConsoleMessage = (args: unknown[]): string => {
   }
 
   return parts.join(" ");
+};
+
+export const formatConsoleMessageWithCallStack = (args: unknown[], callStack?: string): string => {
+  const message = formatConsoleMessage(args);
+  if (!GENERIC_ERROR_TEXT.test(message) || !callStack) return message;
+
+  const pageFrames = callStack
+    .split(/\r?\n/)
+    .slice(1)
+    .filter((line) => line.trim() && !EXTENSION_STACK_FRAME.test(line))
+    .slice(0, CALL_STACK_LIMIT);
+
+  return pageFrames.length ? `${message}\nConsole call stack:\n${pageFrames.join("\n")}` : message;
 };

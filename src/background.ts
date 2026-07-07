@@ -17,12 +17,14 @@ import {
   recordPageNetworkEntry,
   recordSendHeaders,
 } from "./network-capture";
+import { networkFailureConsoleEntry } from "./network-console";
 import {
   captureCdpSnapshot,
   normalizeInstalledExtensions,
   prepareSnapshotForUpload,
   uploadSnapshot,
 } from "./share-snapshot";
+import { shouldSuppressConsoleLog } from "./console-filter";
 import { normalizeConsoleText } from "./console-format";
 
 // Background service worker - relays console logs between content scripts and devtools panels
@@ -45,6 +47,7 @@ interface ConsoleLogEntry extends ConsoleLogData {
 const tabLogs: Record<number, ConsoleLogEntry[]> = {};
 const tabConnections: Record<number, chrome.runtime.Port[]> = {};
 const networkCapture = createNetworkCaptureStore(500);
+const networkConsoleLogKeys: Record<number, Set<string>> = {};
 const pendingShareRequests: Record<
   string,
   {
@@ -60,6 +63,14 @@ type ShareResponseMessage =
 interface ShareActiveTabOptions {
   includeScreenshot: boolean;
 }
+
+void reinjectContentBridgeIntoOpenTabs();
+chrome.runtime.onInstalled.addListener(() => {
+  void reinjectContentBridgeIntoOpenTabs();
+});
+chrome.runtime.onStartup.addListener(() => {
+  void reinjectContentBridgeIntoOpenTabs();
+});
 
 // Handle messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -87,11 +98,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type !== "console-log") return;
 
-  // Initialize if needed
-  if (!tabLogs[tabId]) tabLogs[tabId] = [];
-  if (!tabConnections[tabId]) tabConnections[tabId] = [];
-
-  // Store log
   const log = message.data as ConsoleLogData;
   const entry: ConsoleLogEntry = {
     ...log,
@@ -99,22 +105,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     source: "content",
     text: normalizeConsoleText(log.text),
   };
-
-  tabLogs[tabId].push(entry);
-
-  // Limit stored logs
-  if (tabLogs[tabId].length > 1000) {
-    tabLogs[tabId] = tabLogs[tabId].slice(-1000);
-  }
-
-  // Forward to connected devtools panels
-  tabConnections[tabId].forEach((port) => {
-    try {
-      port.postMessage({ type: "new-log", log: entry });
-    } catch {
-      // Port might be disconnected
-    }
-  });
+  if (shouldSuppressConsoleLog(entry)) return;
+  storeConsoleLog(tabId, entry);
 });
 
 async function shareActiveTab(tabId: number, options: ShareActiveTabOptions): Promise<ShareResponseMessage> {
@@ -256,6 +248,25 @@ function collectRuntimeEnvironment(page: PageCapture) {
   };
 }
 
+async function reinjectContentBridgeIntoOpenTabs(): Promise<void> {
+  if (!chrome.scripting?.executeScript) return;
+
+  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+  await Promise.all(
+    tabs.map(async (tab) => {
+      if (!tab.id) return;
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id, allFrames: true },
+          files: ["content-bridge.js"],
+        });
+      } catch {
+        // Some pages reject extension script injection; normal content_script matching will handle future loads.
+      }
+    })
+  );
+}
+
 async function requestShareFromPanel(tabId: number): Promise<ShareResponseMessage> {
   const ports = tabConnections[tabId] ?? [];
   const port = ports.at(-1);
@@ -327,9 +338,14 @@ chrome.runtime.onConnect.addListener((port) => {
 
 // Clean up when tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
-  delete tabLogs[tabId];
   delete tabConnections[tabId];
-  clearNetworkCaptureForTab(networkCapture, tabId);
+  resetTabCapture(tabId);
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === "loading") {
+    resetTabCapture(tabId, { notifyPanels: true });
+  }
 });
 
 if (chrome.webRequest) {
@@ -348,5 +364,64 @@ if (chrome.webRequest) {
   }, filter, ["responseHeaders"]);
   chrome.webRequest.onErrorOccurred.addListener((details) => {
     recordErrorOccurred(networkCapture, details);
+    setTimeout(() => forwardFailedNetworkConsoleLog(details), 100);
   }, filter);
+}
+
+function storeConsoleLog(tabId: number, entry: ConsoleLogEntry): void {
+  if (!tabLogs[tabId]) tabLogs[tabId] = [];
+  if (!tabConnections[tabId]) tabConnections[tabId] = [];
+
+  tabLogs[tabId].push(entry);
+  if (tabLogs[tabId].length > 1000) {
+    tabLogs[tabId] = tabLogs[tabId].slice(-1000);
+  }
+
+  tabConnections[tabId].forEach((port) => {
+    try {
+      port.postMessage({ type: "new-log", log: entry });
+    } catch {
+      // Port might be disconnected.
+    }
+  });
+}
+
+function resetTabCapture(tabId: number, options: { notifyPanels?: boolean } = {}): void {
+  delete tabLogs[tabId];
+  delete networkConsoleLogKeys[tabId];
+  clearNetworkCaptureForTab(networkCapture, tabId);
+
+  if (!options.notifyPanels) return;
+  tabConnections[tabId]?.forEach((port) => {
+    try {
+      port.postMessage({ type: "tab-reset" });
+    } catch {
+      // Port might be disconnected.
+    }
+  });
+}
+
+function forwardFailedNetworkConsoleLog(details: chrome.webRequest.WebResponseErrorDetails): void {
+  if (details.tabId < 0) return;
+  if (!networkConsoleLogKeys[details.tabId]) networkConsoleLogKeys[details.tabId] = new Set();
+
+  const key = `${details.requestId}:${details.error}`;
+  if (networkConsoleLogKeys[details.tabId].has(key)) return;
+
+  const method = "method" in details && typeof details.method === "string" ? details.method.toUpperCase() : "UNKNOWN";
+  const request = getCapturedNetworkRequests(networkCapture, details.tabId)
+    .filter((item) => item.url === details.url && item.method === method && item.error === details.error)
+    .at(-1);
+  if (!request) return;
+
+  const extra = details as chrome.webRequest.WebResponseErrorDetails & { documentUrl?: string; initiator?: string };
+  const entry = networkFailureConsoleEntry(request, {
+    id: Date.now() + Math.random(),
+    timestamp: details.timeStamp,
+    frameUrl: extra.documentUrl ?? extra.initiator ?? details.url,
+  });
+  if (!entry) return;
+
+  networkConsoleLogKeys[details.tabId].add(key);
+  storeConsoleLog(details.tabId, entry);
 }

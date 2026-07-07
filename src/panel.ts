@@ -1,4 +1,5 @@
 import type { ConsoleLogEntry, NetworkRequest } from "./types";
+import { normalizePanelConsoleEntry, panelPathForUrl } from "./panel-format";
 import { shareDevtoolsSnapshot } from "./share-snapshot";
 
 // State
@@ -162,7 +163,7 @@ function initConsole() {
 }
 
 function addConsoleEntry(entry: ConsoleLogEntry) {
-  consoleLogs.unshift(entry);
+  consoleLogs.unshift(normalizePanelConsoleEntry(entry));
   if (consoleLogs.length > 1000) consoleLogs.length = 1000;
   renderConsole();
 }
@@ -177,13 +178,21 @@ function connectConsolePort() {
 
   consolePort.onMessage.addListener((message) => {
     if (message.type === "init-logs") {
-      consoleLogs = (message.logs as ConsoleLogEntry[]) ?? [];
+      consoleLogs = ((message.logs as ConsoleLogEntry[]) ?? []).map(normalizePanelConsoleEntry);
       renderConsole();
       return;
     }
 
     if (message.type === "new-log") {
       addConsoleEntry(message.log as ConsoleLogEntry);
+      return;
+    }
+
+    if (message.type === "tab-reset") {
+      consoleLogs = [];
+      networkRequests = [];
+      renderConsole();
+      renderNetwork();
       return;
     }
 
@@ -231,8 +240,8 @@ function renderConsole() {
   const filtered = consoleLogs.filter((entry) => {
     if (!consoleFilter) return true;
     return (
-      entry.text.toLowerCase().includes(consoleFilter) ||
-      entry.type.toLowerCase().includes(consoleFilter)
+      String(entry.text ?? "").toLowerCase().includes(consoleFilter) ||
+      String(entry.type ?? "").toLowerCase().includes(consoleFilter)
     );
   });
   const frameFiltered = consoleIncludeIframes
@@ -334,17 +343,23 @@ function renderNetwork() {
 
   list.innerHTML = filtered
     .map(
-      (r) => `
+      (r) => {
+        const status = typeof r.status === "number" ? r.status : 0;
+        const method = r.method || "UNKNOWN";
+        const methodClass = method.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+        const statusClass = status < 300 ? "ok" : status < 400 ? "redirect" : "error";
+        return `
     <div class="net-item" data-id="${r.id}">
-      <span class="method ${r.method.toLowerCase()}">${r.method}</span>
-      <span class="status ${r.status < 300 ? "ok" : r.status < 400 ? "redirect" : "error"}">${r.status}</span>
-      <span class="url">${new URL(r.url).pathname}</span>
+      <span class="method ${methodClass}">${escapeHtml(method)}</span>
+      <span class="status ${statusClass}">${status}</span>
+      <span class="url">${escapeHtml(panelPathForUrl(r.url))}</span>
       <div class="actions">
         <button class="action-btn" data-action="copy" title="Copy">${ICON_COPY}</button>
         <button class="action-btn" data-action="download" title="Download">${ICON_DOWNLOAD}</button>
       </div>
     </div>
-  `
+  `;
+      }
     )
     .join("");
 

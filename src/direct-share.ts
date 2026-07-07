@@ -10,6 +10,7 @@ import type {
   StorageSnapshot,
 } from "../shared/snapshot";
 import { mergeNetworkRequests } from "./network-capture";
+import { withNetworkFailureConsoleLogs } from "./network-console";
 
 export interface PageResourceCapture {
   name: string;
@@ -53,6 +54,7 @@ export interface DirectSnapshotInputOptions {
 }
 
 export function buildDirectSnapshotInput(options: DirectSnapshotInputOptions): CreateSnapshotInput {
+  const network = mergeNetworkRequests(options.networkRequests ?? [], options.page.resources.map(resourceToNetworkRequest));
   return {
     id: options.id,
     url: options.page.url,
@@ -68,8 +70,8 @@ export function buildDirectSnapshotInput(options: DirectSnapshotInputOptions): C
     pageDiagnostics: options.page.pageDiagnostics,
     installedExtensions: options.installedExtensions,
     captureNotices: options.page.captureNotices,
-    network: mergeNetworkRequests(options.networkRequests ?? [], options.page.resources.map(resourceToNetworkRequest)),
-    console: options.consoleLogs.map((entry) => ({ ...entry, source: entry.source ?? "content" })),
+    network,
+    console: withNetworkFailureConsoleLogs(options.consoleLogs, network, options.page.url).map((entry) => ({ ...entry, source: entry.source ?? "content" })),
     storage: options.page.storage,
     cdp: {
       ...options.cdp,

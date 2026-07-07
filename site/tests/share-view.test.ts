@@ -446,6 +446,34 @@ describe("share view model", () => {
     expect(model.console.rows.map((row) => row.text)).toEqual(["Error", "TypeError"]);
   });
 
+  test("keeps browser-style blocked network errors visible in console rows and AI summary", () => {
+    const text = [
+      "POST https://x.com/i/api/1.1/graphql/viewer_context.json net::ERR_BLOCKED_BY_CLIENT",
+      "    at dispatch (https://x.com/main.6074c62a.js:16:1)",
+      "    at post (https://x.com/main.6074c62a.js:17:1)",
+    ].join("\n");
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://x.com/home",
+      console: [
+        {
+          id: 1,
+          type: "error",
+          text,
+          timestamp: 1_784_000_000_000,
+          source: "content",
+          frameUrl: "https://x.com/home",
+        },
+      ],
+    });
+
+    const model = buildShareViewModel(snapshot);
+
+    expect(model.console.rows[0].message).toBe("POST https://x.com/i/api/1.1/graphql/viewer_context.json net::ERR_BLOCKED_BY_CLIENT");
+    expect(model.console.rows[0].text).toBe(text);
+    expect(model.aiSummary).toContain("POST https://x.com/i/api/1.1/graphql/viewer_context.json net::ERR_BLOCKED_BY_CLIENT");
+  });
+
   test("groups repetitive body privacy notices for the overview", () => {
     const snapshot = createSnapshot({
       id: "AbC234xy",

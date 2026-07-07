@@ -52,6 +52,8 @@ export interface PageNetworkEntry {
   responseHeaders?: Record<string, string>;
   requestBody?: string | null;
   responseBody?: string | null;
+  error?: string;
+  stackTrace?: string;
 }
 
 interface MutableNetworkRequest {
@@ -67,6 +69,7 @@ interface MutableNetworkRequest {
   responseHeaders: Record<string, string>;
   requestBody: string | null;
   responseBody: string | null;
+  error?: string;
 }
 
 export interface NetworkCaptureStore {
@@ -128,6 +131,7 @@ export function recordErrorOccurred(store: NetworkCaptureStore, details: WebRequ
   if (details.method) record.method = normalizeMethod(details.method);
   record.status = 0;
   record.endTime = details.timeStamp;
+  record.error = details.error;
 }
 
 export function recordPageNetworkEntry(store: NetworkCaptureStore, tabId: number, entry: PageNetworkEntry): void {
@@ -138,6 +142,8 @@ export function recordPageNetworkEntry(store: NetworkCaptureStore, tabId: number
     method: normalizeMethod(entry.method),
     requestBody: capBody(entry.requestBody ?? null),
     responseBody: capBody(entry.responseBody ?? null),
+    error: entry.error,
+    stackTrace: entry.stackTrace,
   });
   while (entries.length > store.limit) entries.shift();
   store.pageEntries.set(tabId, entries);
@@ -182,7 +188,7 @@ export function mergeNetworkRequests(
   return [
     ...capturedRequests,
     ...fallbackRequests.filter((request) => !capturedUrls.has(request.url)),
-  ];
+  ].map((request, index) => ({ ...request, id: index + 1 }));
 }
 
 function ensureRecord(store: NetworkCaptureStore, details: WebRequestBase): MutableNetworkRequest {
@@ -282,6 +288,8 @@ function pageEntryToSnapshot(pageRow: PageNetworkEntry, webRow: MutableNetworkRe
     },
     requestBody: pageRow.requestBody ?? webRow?.requestBody ?? null,
     responseBody: pageRow.responseBody ?? null,
+    error: webRow?.error ?? pageRow.error,
+    stackTrace: pageRow.stackTrace,
   };
 }
 
@@ -298,6 +306,7 @@ function webRequestToSnapshot(record: MutableNetworkRequest): NetworkRequestSnap
     responseHeaders: record.responseHeaders,
     requestBody: record.requestBody,
     responseBody: record.responseBody,
+    error: record.error,
   };
 }
 

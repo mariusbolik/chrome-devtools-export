@@ -13,6 +13,8 @@ export interface NetworkRequest {
   responseHeaders: Record<string, string>;
   requestBody: string | null;
   responseBody: string | null;
+  error?: string;
+  stackTrace?: string;
 }
 
 export interface StorageData {

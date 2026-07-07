@@ -167,9 +167,57 @@ describe("network capture store", () => {
       }
     }
 
-    expect(getCapturedNetworkRequests(store, 7).map((request) => [request.url, request.status, request.time])).toEqual([
-      ["https://example.com/1", 0, 0],
-      ["https://example.com/2", 0, 298],
+    expect(getCapturedNetworkRequests(store, 7).map((request) => [request.url, request.status, request.time, request.error])).toEqual([
+      ["https://example.com/1", 0, 0, undefined],
+      ["https://example.com/2", 0, 298, "net::ERR_BLOCKED_BY_CLIENT"],
+    ]);
+  });
+
+  test("merges failed fetch net errors with the page call stack", () => {
+    const store = createNetworkCaptureStore(10);
+
+    recordBeforeRequest(store, {
+      tabId: 9,
+      requestId: "viewer-context",
+      method: "POST",
+      url: "https://x.com/i/api/1.1/graphql/viewer_context.json",
+      type: "xmlhttprequest",
+      timeStamp: 2000,
+      requestBody: null,
+    });
+    recordPageNetworkEntry(store, 9, {
+      method: "POST",
+      url: "https://x.com/i/api/1.1/graphql/viewer_context.json",
+      status: 0,
+      time: 50,
+      timestamp: 2010,
+      initiatorType: "fetch",
+      requestBody: null,
+      responseBody: null,
+      stackTrace: "Error\n    at dispatch (https://x.com/main.js:16:1)\n    at post (https://x.com/main.js:17:1)",
+    });
+    recordErrorOccurred(store, {
+      tabId: 9,
+      requestId: "viewer-context",
+      method: "POST",
+      url: "https://x.com/i/api/1.1/graphql/viewer_context.json",
+      type: "xmlhttprequest",
+      timeStamp: 2075,
+      statusCode: 0,
+      statusLine: "",
+      responseHeaders: [],
+      fromCache: false,
+      error: "net::ERR_BLOCKED_BY_CLIENT",
+    });
+
+    expect(getCapturedNetworkRequests(store, 9)).toEqual([
+      expect.objectContaining({
+        method: "POST",
+        url: "https://x.com/i/api/1.1/graphql/viewer_context.json",
+        status: 0,
+        error: "net::ERR_BLOCKED_BY_CLIENT",
+        stackTrace: "Error\n    at dispatch (https://x.com/main.js:16:1)\n    at post (https://x.com/main.js:17:1)",
+      }),
     ]);
   });
 });

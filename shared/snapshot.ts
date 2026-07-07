@@ -25,6 +25,8 @@ export interface NetworkRequestSnapshot {
   responseHeaders: Record<string, string>;
   requestBody: string | null;
   responseBody: string | null;
+  error?: string;
+  stackTrace?: string;
 }
 
 export interface StorageSnapshot {
@@ -254,6 +256,8 @@ export function redactSnapshot(
       responseHeaders: redactStringRecord(request.responseHeaders, `${path}.responseHeaders`, redactions),
       requestBody: redactBody(request.requestBody, `${path}.requestBody`, redactions),
       responseBody: redactBody(request.responseBody, `${path}.responseBody`, redactions),
+      error: request.error ? redactSensitiveText(request.error, `${path}.error`, redactions) : request.error,
+      stackTrace: request.stackTrace ? redactSensitiveText(request.stackTrace, `${path}.stackTrace`, redactions) : request.stackTrace,
     };
   });
 

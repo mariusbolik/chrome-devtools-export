@@ -11,9 +11,11 @@ import {
   validateSnapshot,
   type ShareSnapshot,
 } from "../../../shared/snapshot";
+import { applyShareReadCacheHeaders } from "./share-cache";
 
 export interface ShareApiEnv {
   SNAPSHOTS: R2Bucket;
+  SHARE_CREATE_LIMITER?: RateLimit;
   PUBLIC_BASE_URL?: string;
 }
 
@@ -63,6 +65,10 @@ export async function handleCreateShare(
   const contentLength = Number(request.headers.get("content-length") ?? 0);
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     return json({ error: `Snapshot exceeds ${maxBytes} bytes` }, 413);
+  }
+
+  if (!(await canCreateShare(request, env))) {
+    return json({ error: "Too many share uploads. Try again shortly." }, 429, { "Retry-After": "60" });
   }
 
   let payload: unknown;
@@ -151,13 +157,13 @@ export async function getSharedSnapshotJson(
     return json({ error: "Snapshot expired" }, 410);
   }
 
+  const headers = new Headers(CORS_HEADERS);
+  headers.set("content-type", "application/json; charset=utf-8");
+  applyShareReadCacheHeaders(headers, expiresAt, context.now ?? new Date());
+
   return new Response(await object.text(), {
     status: 200,
-    headers: {
-      "cache-control": "no-store",
-      "content-type": "application/json; charset=utf-8",
-      ...CORS_HEADERS,
-    },
+    headers,
   });
 }
 
@@ -224,6 +230,31 @@ function normalizeCf(cf: IncomingRequestCfProperties | undefined): Record<string
 
 function normalizeBaseUrl(value: string | undefined): string {
   return (value || "https://devtoolsexport.com").replace(/\/+$/, "");
+}
+
+async function canCreateShare(request: Request, env: ShareApiEnv): Promise<boolean> {
+  if (!env.SHARE_CREATE_LIMITER) return true;
+
+  try {
+    const outcome = await env.SHARE_CREATE_LIMITER.limit({ key: shareCreateRateLimitKey(request) });
+    return outcome.success;
+  } catch (error) {
+    console.warn("Share create rate limiter failed", error);
+    return true;
+  }
+}
+
+function shareCreateRateLimitKey(request: Request): string {
+  const ip = firstForwardedIp(request.headers.get("cf-connecting-ip")) ?? firstForwardedIp(request.headers.get("x-forwarded-for"));
+  if (ip) return `share-create:${ip}`;
+
+  const cf = (request as Request & { cf?: IncomingRequestCfProperties }).cf;
+  return `share-create:${cf?.country ?? "unknown"}:${cf?.colo ?? "unknown"}`;
+}
+
+function firstForwardedIp(value: string | null): string | null {
+  const first = value?.split(",")[0]?.trim();
+  return first || null;
 }
 
 function json(value: unknown, status: number, headers?: HeadersInit): Response {

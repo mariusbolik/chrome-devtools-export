@@ -35,6 +35,32 @@ function makeEnv(bucket = new MockR2Bucket()): ShareApiEnv {
 }
 
 describe("share API", () => {
+  test("handleCreateShare rejects rate-limited uploads before parsing JSON", async () => {
+    const response = await handleCreateShare(
+      new Request("https://devtoolsexport.com/api/share", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": "203.0.113.10",
+        },
+        body: "{",
+      }),
+      {
+        ...makeEnv(),
+        SHARE_CREATE_LIMITER: {
+          async limit(options: RateLimitOptions) {
+            expect(options.key).toBe("share-create:203.0.113.10");
+            return { success: false };
+          },
+        } as RateLimit,
+      }
+    );
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("60");
+    expect(await response.json()).toEqual({ error: "Too many share uploads. Try again shortly." });
+  });
+
   test("handleCreateShare rejects snapshots captured from the product domain", async () => {
     const bucket = new MockR2Bucket();
     const response = await handleCreateShare(
@@ -262,7 +288,7 @@ describe("share API", () => {
     expect(response.headers.get("access-control-allow-headers")).toContain("x-devtools-export-include-screenshot");
   });
 
-  test("getSharedSnapshotJson returns stored JSON with no-store cache headers", async () => {
+  test("getSharedSnapshotJson returns stored JSON with edge cache headers", async () => {
     const bucket = new MockR2Bucket();
     const snapshot = createSnapshot({ id: "AbC234xy", url: "https://example.com" });
     await bucket.put("snapshots/AbC234xy.json", JSON.stringify(snapshot), {
@@ -272,7 +298,8 @@ describe("share API", () => {
     const response = await getSharedSnapshotJson("AbC234xy", makeEnv(bucket));
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("cache-control")).toBe("public, max-age=0, s-maxage=300");
+    expect(response.headers.get("cdn-cache-control")).toBe("max-age=300");
     expect((await response.json()).id).toBe("AbC234xy");
   });
 

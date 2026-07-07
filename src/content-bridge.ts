@@ -1,30 +1,41 @@
-window.addEventListener("message", (event) => {
-  if (event.source !== window) return;
-  if (!event.data || (event.data.type !== "DEVTOOLS_EXPORT_LOG" && event.data.type !== "DEVTOOLS_EXPORT_NETWORK")) return;
-  if (!event.data.data || typeof event.data.data !== "object") return;
+import { DEVTOOLS_EXPORT_LOGGER_VERSION } from "./logger-version";
 
-  try {
-    chrome.runtime.sendMessage({
-      type: event.data.type === "DEVTOOLS_EXPORT_NETWORK" ? "network-log" : "console-log",
-      data: event.data.data,
-    });
-  } catch {
-    // Ignore messaging errors (e.g. extension unloaded)
-  }
-});
+const bridgeWindow = window as unknown as { __DEVTOOLS_EXPORT_BRIDGE_VERSION__?: string };
+const shouldInstallBridge = bridgeWindow.__DEVTOOLS_EXPORT_BRIDGE_VERSION__ !== DEVTOOLS_EXPORT_LOGGER_VERSION;
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type !== "collect-page-snapshot") return;
+if (shouldInstallBridge) {
+  bridgeWindow.__DEVTOOLS_EXPORT_BRIDGE_VERSION__ = DEVTOOLS_EXPORT_LOGGER_VERSION;
 
-  collectPageSnapshot()
-    .then(sendResponse)
-    .catch((error) => {
-      sendResponse({
-        error: error instanceof Error ? error.message : "Page capture failed",
+  window.addEventListener("message", (event) => {
+    if (event.source !== window) return;
+    if (!event.data || (event.data.type !== "DEVTOOLS_EXPORT_LOG" && event.data.type !== "DEVTOOLS_EXPORT_NETWORK")) return;
+    if (!event.data.data || typeof event.data.data !== "object") return;
+
+    try {
+      chrome.runtime.sendMessage({
+        type: event.data.type === "DEVTOOLS_EXPORT_NETWORK" ? "network-log" : "console-log",
+        data: event.data.data,
       });
-    });
-  return true;
-});
+    } catch {
+      // Ignore messaging errors (e.g. extension unloaded)
+    }
+  });
+}
+
+if (shouldInstallBridge) {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type !== "collect-page-snapshot") return;
+
+    collectPageSnapshot()
+      .then(sendResponse)
+      .catch((error) => {
+        sendResponse({
+          error: error instanceof Error ? error.message : "Page capture failed",
+        });
+      });
+    return true;
+  });
+}
 
 async function collectPageSnapshot() {
   return {
@@ -157,14 +168,16 @@ function unique(values: string[]): string[] {
 }
 
 const injectMainScript = () => {
-  if (document.documentElement.getAttribute("data-devtools-export-logger") === "true") return;
+  if (document.documentElement.getAttribute("data-devtools-export-logger-version") === DEVTOOLS_EXPORT_LOGGER_VERSION) return;
   document.documentElement.setAttribute("data-devtools-export-logger", "true");
+  document.documentElement.setAttribute("data-devtools-export-logger-version", DEVTOOLS_EXPORT_LOGGER_VERSION);
 
   const script = document.createElement("script");
   script.src = chrome.runtime.getURL("content-main.js");
   script.async = false;
   script.onerror = () => {
     document.documentElement.removeAttribute("data-devtools-export-logger");
+    document.documentElement.removeAttribute("data-devtools-export-logger-version");
   };
   if (document.head) {
     document.head.appendChild(script);
@@ -176,10 +189,12 @@ const injectMainScript = () => {
   script.onload = () => script.remove();
 };
 
-injectMainScript();
+if (shouldInstallBridge) injectMainScript();
 
-try {
-  chrome.runtime.sendMessage({ type: "console-bridge-ready" });
-} catch {
-  // Ignore messaging errors (e.g. extension unloaded)
+if (shouldInstallBridge) {
+  try {
+    chrome.runtime.sendMessage({ type: "console-bridge-ready" });
+  } catch {
+    // Ignore messaging errors (e.g. extension unloaded)
+  }
 }

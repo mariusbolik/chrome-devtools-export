@@ -4,5 +4,6 @@
 
 interface Env {
   SNAPSHOTS: R2Bucket;
+  SHARE_CREATE_LIMITER?: RateLimit;
   PUBLIC_BASE_URL?: string;
 }

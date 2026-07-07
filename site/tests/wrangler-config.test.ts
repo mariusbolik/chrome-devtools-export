@@ -26,6 +26,19 @@ describe("wrangler config", () => {
     ]);
   });
 
+  test("rate limits share creation uploads", () => {
+    expect(wranglerConfig.ratelimits).toEqual([
+      {
+        name: "SHARE_CREATE_LIMITER",
+        namespace_id: "1001",
+        simple: {
+          limit: 20,
+          period: 60,
+        },
+      },
+    ]);
+  });
+
   test("does not enable Node.js compatibility without a Node API dependency", () => {
     expect(wranglerConfig.compatibility_flags ?? []).not.toContain("nodejs_compat");
   });

@@ -73,6 +73,21 @@ describe("direct share snapshot input", () => {
           requestBody: null,
           responseBody: null,
         },
+        {
+          id: 2,
+          method: "POST",
+          url: "https://x.com/i/api/1.1/graphql/viewer_context.json",
+          status: 0,
+          time: 40,
+          source: "page-intercept",
+          initiatorType: "fetch",
+          requestHeaders: {},
+          responseHeaders: {},
+          requestBody: null,
+          responseBody: null,
+          error: "net::ERR_BLOCKED_BY_CLIENT",
+          stackTrace: "Error\n    at post (https://x.com/main.js:17:1)",
+        },
       ],
     });
 
@@ -93,6 +108,21 @@ describe("direct share snapshot input", () => {
       },
       {
         id: 2,
+        method: "POST",
+        url: "https://x.com/i/api/1.1/graphql/viewer_context.json",
+        status: 0,
+        time: 40,
+        source: "page-intercept",
+        initiatorType: "fetch",
+        requestHeaders: {},
+        responseHeaders: {},
+        requestBody: null,
+        responseBody: null,
+        error: "net::ERR_BLOCKED_BY_CLIENT",
+        stackTrace: "Error\n    at post (https://x.com/main.js:17:1)",
+      },
+      {
+        id: 3,
         method: "UNKNOWN",
         url: "https://example.com/style.css",
         status: 0,
@@ -111,5 +141,8 @@ describe("direct share snapshot input", () => {
     expect(input.pageDiagnostics).toEqual(page.pageDiagnostics);
     expect(input.cdp?.errors).toEqual(["Page.captureScreenshot: denied"]);
     expect(input.captureNotices).toEqual([{ path: "page", reason: "Content script capture failed; uploaded tab metadata only" }]);
+    expect(input.console.map((entry) => entry.text)).toContain(
+      "POST https://x.com/i/api/1.1/graphql/viewer_context.json net::ERR_BLOCKED_BY_CLIENT\n    at post (https://x.com/main.js:17:1)"
+    );
   });
 });

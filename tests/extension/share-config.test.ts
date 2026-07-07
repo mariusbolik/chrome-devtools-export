@@ -10,4 +10,8 @@ describe("share service config", () => {
   test("declares webRequest for richer popup network capture", () => {
     expect(manifest.permissions).toContain("webRequest");
   });
+
+  test("declares scripting so updated content bridge code can reach already-open tabs", () => {
+    expect(manifest.permissions).toContain("scripting");
+  });
 });

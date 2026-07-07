@@ -26,6 +26,7 @@
     "activeTab",
     "debugger",
     "management",
+    "scripting",
     "webRequest"
   ],
   "host_permissions": [
