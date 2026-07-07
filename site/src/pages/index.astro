@@ -139,30 +139,52 @@ const softwareApplicationJsonLd = JSON.stringify(
             <h2 id="captured-data-title">The report is organized like the DevTools data they already use.</h2>
           </div>
 
-          <div class="proof-grid">
-            <article>
-              <figure class="screenshot-frame">
-                <img src="/screenshots/share-network.png" alt="Shared report network tab showing request status, method, source, type, size, and timing" />
-              </figure>
-              <h3>Failed requests are visible immediately.</h3>
-              <p>Network requests include status, method, resource type, source, timing, and size so API and asset failures are easier to spot.</p>
-            </article>
+          <div class="proof-carousel" data-proof-carousel>
+            <div class="proof-stage" aria-label="Screenshot slideshow" aria-live="polite">
+              <button class="proof-arrow proof-arrow-prev" type="button" data-proof-prev aria-label="Previous screenshot">
+                <span aria-hidden="true">&lsaquo;</span>
+              </button>
 
-            <article>
-              <figure class="screenshot-frame">
-                <img src="/screenshots/share-console-logs.png" alt="Shared report console tab showing captured errors and warnings" />
-              </figure>
-              <h3>Console errors travel with the report.</h3>
-              <p>Console logs, warnings, errors, stack traces, and page context stay attached to the exact bug report link.</p>
-            </article>
+              <article id="proof-network-slide" data-proof-slide="network" class="proof-slide active">
+                <figure class="screenshot-frame">
+                  <img src="/screenshots/share-network.png" alt="Shared report network tab showing request status, method, source, type, size, and timing" />
+                </figure>
+                <div class="proof-copy">
+                  <h3>Failed requests are visible immediately.</h3>
+                  <p>Network requests include status, method, resource type, source, timing, and size so API and asset failures are easier to spot.</p>
+                </div>
+              </article>
 
-            <article>
-              <figure class="screenshot-frame">
-                <img src="/screenshots/share-ai-summary.png" alt="Shared report AI summary tab with a compact debugging brief" />
-              </figure>
-              <h3>A compact AI-ready summary is included.</h3>
-              <p>Each share includes a concise summary with console, network, environment, storage, and screenshot context for faster triage.</p>
-            </article>
+              <article id="proof-console-slide" data-proof-slide="console" hidden class="proof-slide">
+                <figure class="screenshot-frame">
+                  <img src="/screenshots/share-console-logs.png" alt="Shared report console tab showing captured errors and warnings" />
+                </figure>
+                <div class="proof-copy">
+                  <h3>Console errors travel with the report.</h3>
+                  <p>Console logs, warnings, errors, stack traces, and page context stay attached to the exact bug report link.</p>
+                </div>
+              </article>
+
+              <article id="proof-summary-slide" data-proof-slide="summary" hidden class="proof-slide">
+                <figure class="screenshot-frame">
+                  <img src="/screenshots/share-ai-summary.png" alt="Shared report AI summary tab with a compact debugging brief" />
+                </figure>
+                <div class="proof-copy">
+                  <h3>A compact AI-ready summary is included.</h3>
+                  <p>Each share includes a concise summary with console, network, environment, storage, and screenshot context for faster triage.</p>
+                </div>
+              </article>
+
+              <button class="proof-arrow proof-arrow-next" type="button" data-proof-next aria-label="Next screenshot">
+                <span aria-hidden="true">&rsaquo;</span>
+              </button>
+            </div>
+
+            <div class="proof-dots" aria-label="Screenshot slides">
+              <button class="proof-dot active" type="button" data-proof-dot="network" aria-label="Show network screenshot" aria-pressed="true"></button>
+              <button class="proof-dot" type="button" data-proof-dot="console" aria-label="Show console screenshot" aria-pressed="false"></button>
+              <button class="proof-dot" type="button" data-proof-dot="summary" aria-label="Show AI summary screenshot" aria-pressed="false"></button>
+            </div>
           </div>
         </div>
       </section>
@@ -196,6 +218,38 @@ const softwareApplicationJsonLd = JSON.stringify(
       <a href="https://x.com/mariusbolik">x.com/mariusbolik</a>
       <a href="https://www.linkedin.com/in/marius-bolik/">LinkedIn</a>
     </footer>
+    <script is:inline>
+      (() => {
+        for (const carousel of document.querySelectorAll("[data-proof-carousel]")) {
+          const slides = Array.from(carousel.querySelectorAll("[data-proof-slide]"));
+          const dots = Array.from(carousel.querySelectorAll("[data-proof-dot]"));
+          let currentIndex = Math.max(0, slides.findIndex((slide) => !slide.hidden));
+
+          const select = (nextIndex) => {
+            currentIndex = (nextIndex + slides.length) % slides.length;
+
+            for (const [index, slide] of slides.entries()) {
+              const active = index === currentIndex;
+              slide.hidden = !active;
+              slide.classList.toggle("active", active);
+            }
+
+            for (const [index, dot] of dots.entries()) {
+              const active = index === currentIndex;
+              dot.classList.toggle("active", active);
+              dot.setAttribute("aria-pressed", String(active));
+            }
+          };
+
+          for (const [index, dot] of dots.entries()) {
+            dot.addEventListener("click", () => select(index));
+          }
+
+          carousel.querySelector("[data-proof-prev]")?.addEventListener("click", () => select(currentIndex - 1));
+          carousel.querySelector("[data-proof-next]")?.addEventListener("click", () => select(currentIndex + 1));
+        }
+      })();
+    </script>
   </body>
 </html>
 
@@ -464,7 +518,7 @@ const softwareApplicationJsonLd = JSON.stringify(
   }
 
   .text-stack p,
-  .proof-grid p,
+  .proof-copy p,
   .trust-list p {
     margin: 0;
     color: var(--text);
@@ -542,24 +596,110 @@ const softwareApplicationJsonLd = JSON.stringify(
     margin-bottom: 30px;
   }
 
-  .proof-grid {
+  .proof-carousel {
+    position: relative;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px;
+    gap: 16px;
   }
 
-  .proof-grid article {
+  .proof-stage {
     min-width: 0;
+    position: relative;
   }
 
-  .proof-grid .screenshot-frame {
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
+  .proof-slide {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.5fr);
+    align-items: center;
+    gap: clamp(18px, 4vw, 42px);
   }
 
-  .proof-grid p {
-    margin-top: 8px;
+  .proof-slide[hidden] {
+    display: none;
+  }
+
+  .proof-arrow {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: rgba(32, 35, 36, 0.88);
+    color: var(--text-bright);
+    font: inherit;
+    cursor: pointer;
+    transform: translateY(-50%);
+  }
+
+  .proof-arrow:hover,
+  .proof-arrow:focus-visible {
+    border-color: var(--blue);
+    background: var(--bg-hover);
+    outline: none;
+  }
+
+  .proof-arrow span {
+    display: block;
+    color: inherit;
+    font-size: 30px;
+    line-height: 1;
+    transform: translateY(-1px);
+  }
+
+  .proof-arrow-prev {
+    left: 12px;
+  }
+
+  .proof-arrow-next {
+    right: 12px;
+  }
+
+  .proof-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+  }
+
+  .proof-dot {
+    width: 9px;
+    height: 9px;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--bg-light);
+    cursor: pointer;
+  }
+
+  .proof-dot:hover,
+  .proof-dot:focus-visible {
+    border-color: var(--blue);
+    outline: none;
+  }
+
+  .proof-dot.active {
+    border-color: var(--blue);
+    background: var(--blue);
+  }
+
+  .proof-stage .screenshot-frame {
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.3);
+  }
+
+  .proof-copy h3 {
+    margin-top: 0;
+  }
+
+  .proof-copy p {
+    margin-top: 10px;
     color: var(--text-dim);
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .trust-list {
@@ -602,7 +742,7 @@ const softwareApplicationJsonLd = JSON.stringify(
     .split,
     .solution-grid,
     .trust-grid,
-    .proof-grid {
+    .proof-slide {
       grid-template-columns: 1fr;
     }
 
@@ -614,8 +754,8 @@ const softwareApplicationJsonLd = JSON.stringify(
       justify-self: start;
     }
 
-    .proof-grid {
-      gap: 28px;
+    .proof-arrow {
+      top: min(34vw, 240px);
     }
   }
 
@@ -647,6 +787,20 @@ const softwareApplicationJsonLd = JSON.stringify(
 
     .button {
       width: 100%;
+    }
+
+    .proof-arrow {
+      top: min(36vw, 160px);
+      width: 34px;
+      height: 34px;
+    }
+
+    .proof-arrow-prev {
+      left: 8px;
+    }
+
+    .proof-arrow-next {
+      right: 8px;
     }
 
     .section-inner {

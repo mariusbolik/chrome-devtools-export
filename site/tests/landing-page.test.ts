@@ -73,4 +73,28 @@ describe("landing page", () => {
     expect(pageSource).toContain("h2,\n  h3,\n  p {\n    overflow-wrap: anywhere;");
     expect(pageSource).not.toContain("h1,\n  h2,\n  h3,\n  p {\n    overflow-wrap: anywhere;");
   });
+
+  test("presents the proof screenshots as a simple one-slide carousel", () => {
+    expect(pageSource).toContain('class="proof-carousel"');
+    expect(pageSource).toContain("data-proof-carousel");
+    expect(pageSource.match(/data-proof-slide=/g)?.length).toBe(3);
+    expect(pageSource.match(/data-proof-dot=/g)?.length).toBe(3);
+    expect(pageSource).toContain("data-proof-prev");
+    expect(pageSource).toContain("data-proof-next");
+    expect(pageSource).toContain('id="proof-network-slide" data-proof-slide="network"');
+    expect(pageSource).toContain('id="proof-console-slide" data-proof-slide="console" hidden');
+    expect(pageSource).toContain('id="proof-summary-slide" data-proof-slide="summary" hidden');
+    expect(pageSource).toContain("[data-proof-carousel]");
+    expect(pageSource).toContain("[data-proof-slide]");
+    expect(pageSource).toContain("[data-proof-dot]");
+    expect(pageSource).toContain("[data-proof-prev]");
+    expect(pageSource).toContain("[data-proof-next]");
+    expect(pageSource).toContain("grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.5fr);");
+    expect(pageSource).toContain(".proof-slide[hidden]");
+    expect(pageSource).not.toContain('class="proof-slide-nav"');
+    expect(pageSource).not.toContain('class="proof-tab');
+    expect(pageSource).not.toContain('class="proof-track"');
+    expect(pageSource).not.toContain("scroll-snap-type");
+    expect(pageSource).not.toContain('class="proof-grid"');
+  });
 });
