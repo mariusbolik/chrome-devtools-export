@@ -41,12 +41,20 @@ describe("landing page", () => {
   });
 
   test("renders icons in the primary install and GitHub buttons", () => {
-    expect(pageSource.match(/class="button-icon/g)?.length).toBe(2);
-    expect(pageSource).toContain('class="button-icon chrome-icon"');
+    expect(pageSource.match(/class="button-icon/g)?.length).toBe(3);
+    expect(pageSource.match(/class="button-icon chrome-icon"/g)?.length).toBe(2);
     expect(pageSource).toContain("<title>chrome</title>");
     expect(pageSource).toContain('class="button-icon github-icon"');
     expect(pageSource).toContain("<title>github</title>");
     expect(pageSource).toContain(".button.primary .button-icon");
+  });
+
+  test("removes the manual copying section and adds a large bottom Chrome Store button", () => {
+    expect(pageSource).not.toContain("Manual DevTools copying slows every fix.");
+    expect(pageSource).not.toContain('class="section problem"');
+    expect(pageSource).toContain('class="bottom-install"');
+    expect(pageSource).toContain('class="button primary giant-store-button"');
+    expect(pageSource).toContain(".giant-store-button");
   });
 
   test("renders required footer attribution links", () => {

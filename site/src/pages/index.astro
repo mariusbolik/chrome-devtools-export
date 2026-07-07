@@ -103,25 +103,6 @@ const softwareApplicationJsonLd = JSON.stringify(
         </div>
       </section>
 
-      <section class="section problem" aria-labelledby="problem-title">
-        <div class="section-inner split">
-          <div>
-            <p class="eyebrow">The usual bug report is incomplete</p>
-            <h2 id="problem-title">Manual DevTools copying slows every fix.</h2>
-          </div>
-          <div class="text-stack">
-            <p>
-              A useful report often needs screenshots, console logs, failed network requests, browser information, installed extensions,
-              storage context, and the exact URL state. Asking someone to collect all of that by hand is fragile.
-            </p>
-            <p>
-              Non-technical users usually cannot gather DevTools details correctly, and developers lose time asking follow-up questions
-              instead of reproducing the bug.
-            </p>
-          </div>
-        </div>
-      </section>
-
       <section class="section solution" aria-labelledby="solution-title">
         <div class="section-inner solution-grid">
           <div class="text-stack">
@@ -241,6 +222,20 @@ const softwareApplicationJsonLd = JSON.stringify(
             </div>
           </div>
         </div>
+      </section>
+
+      <section class="bottom-install" aria-label="Install DevToolsExport">
+        <a class="button primary giant-store-button" href={chromeWebStoreUrl}>
+          <svg class="button-icon chrome-icon" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <title>chrome</title>
+            <g fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="4"></circle>
+              <path stroke-linecap="round" d="m8.534 14l-4.5-8M11.5 21.5l4-7.5M12 8h9"></path>
+            </g>
+          </svg>
+          <span>Install free Chrome extension</span>
+        </a>
       </section>
     </main>
 
@@ -575,16 +570,11 @@ const softwareApplicationJsonLd = JSON.stringify(
     padding: clamp(56px, 8vw, 92px) 0;
   }
 
-  .split,
   .solution-grid,
   .trust-grid {
     display: grid;
     grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
     gap: clamp(24px, 5vw, 72px);
-  }
-
-  .problem {
-    background: var(--bg-panel);
   }
 
   .solution,
@@ -817,6 +807,27 @@ const softwareApplicationJsonLd = JSON.stringify(
     font-size: 14px;
   }
 
+  .bottom-install {
+    display: flex;
+    justify-content: center;
+    padding: clamp(34px, 6vw, 64px) 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .giant-store-button {
+    width: min(100%, 540px);
+    min-height: 68px;
+    padding: 16px 26px;
+    font-size: 18px;
+    box-shadow: 0 16px 42px rgba(14, 99, 156, 0.22);
+  }
+
+  .giant-store-button .button-icon {
+    width: 1.35em;
+    height: 1.35em;
+  }
+
   footer {
     display: flex;
     flex-wrap: wrap;
@@ -839,7 +850,6 @@ const softwareApplicationJsonLd = JSON.stringify(
     }
 
     .hero-grid,
-    .split,
     .solution-grid,
     .trust-grid,
     .proof-slide {
