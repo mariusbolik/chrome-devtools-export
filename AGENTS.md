@@ -69,6 +69,7 @@
 - Share page title should be `DevToolsExport #<id>`.
 - Header includes a live countdown until the share link expires.
 - Storage, DOM/CDP, and Environment should be rendered as UI, with raw JSON only as a fallback.
+- `site/src/middleware.ts` enforces trailing slashes for extensionless app pages only; keep `/api`, `/_astro`, and file-extension paths such as `.js`, `.css`, `.png`, and `.json` unredirected.
 
 ## Notes About Captured Console Errors
 
