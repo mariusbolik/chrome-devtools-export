@@ -285,6 +285,11 @@ const softwareApplicationJsonLd = JSON.stringify(
 
     <footer>
       <span>&copy; 2026 Eyloo GmbH. All rights reserved.</span>
+      <nav aria-label="Footer">
+        <a href="/privacy/">Privacy</a>
+        <a href="/contact/">Contact</a>
+        <a href="/terms/">Terms</a>
+      </nav>
     </footer>
     <script is:inline>
       (() => {
@@ -928,11 +933,24 @@ const softwareApplicationJsonLd = JSON.stringify(
 
   footer {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
+    gap: 12px 20px;
     padding: 22px 16px;
     background: var(--bg-light);
     color: var(--text-dim);
+  }
+
+  footer nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  footer a:hover {
+    color: var(--blue);
   }
 
   @media (max-width: 880px) {

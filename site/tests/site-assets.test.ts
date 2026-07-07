@@ -3,6 +3,9 @@ import { describe, expect, test } from "bun:test";
 
 const pages = [
   readFileSync(new URL("../src/pages/index.astro", import.meta.url), "utf8"),
+  readFileSync(new URL("../src/pages/privacy.astro", import.meta.url), "utf8"),
+  readFileSync(new URL("../src/pages/contact.astro", import.meta.url), "utf8"),
+  readFileSync(new URL("../src/pages/terms.astro", import.meta.url), "utf8"),
   readFileSync(new URL("../src/pages/share/[id]/index.astro", import.meta.url), "utf8"),
 ];
 

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="DevTools" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <title>Contact - DevToolsExport</title>
+    <meta name="description" content="Contact information for DevToolsExport." />
+    <link rel="canonical" href="https://devtoolsexport.com/contact/" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">
+        <img src="/favicon.svg" alt="" />
+        <span>DevToolsExport</span>
+      </a>
+    </header>
+
+    <main>
+      <p class="eyebrow">Support</p>
+      <h1>Contact</h1>
+      <p>
+        For questions, bug reports, or support, write me on X:
+        <a href="https://x.com/mariusbolik">@mariusbolik</a>.
+      </p>
+    </main>
+
+    <footer>
+      <span>&copy; 2026 Eyloo GmbH. All rights reserved.</span>
+      <nav aria-label="Footer">
+        <a href="/privacy/">Privacy</a>
+        <a href="/contact/">Contact</a>
+        <a href="/terms/">Terms</a>
+      </nav>
+    </footer>
+  </body>
+</html>
+
+<style>
+  :root {
+    --bg: #1e1e1e;
+    --bg-light: #252526;
+    --border: #3c3c3c;
+    --text: #cccccc;
+    --text-bright: #f3f3f3;
+    --text-dim: #8f8f8f;
+    --green: #4ec9b0;
+    --blue: #569cd6;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    background: var(--bg);
+    color-scheme: dark;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  header,
+  footer {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-light);
+  }
+
+  header {
+    padding: 14px clamp(16px, 4vw, 56px);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-bright);
+    font-weight: 650;
+  }
+
+  .brand img {
+    width: 28px;
+    height: 28px;
+  }
+
+  main {
+    width: min(780px, calc(100vw - 32px));
+    flex: 1;
+    margin: 0 auto;
+    padding: clamp(46px, 8vw, 82px) 0;
+  }
+
+  .eyebrow {
+    margin: 0 0 10px;
+    color: var(--green);
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 0 0 24px;
+    color: var(--text-bright);
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1.1;
+    letter-spacing: 0;
+  }
+
+  p {
+    margin: 0 0 14px;
+    overflow-wrap: anywhere;
+  }
+
+  main a,
+  footer a:hover {
+    color: var(--blue);
+  }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px 20px;
+    padding: 22px 16px;
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+    color: var(--text-dim);
+  }
+
+  footer nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+</style>

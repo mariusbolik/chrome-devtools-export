@@ -71,6 +71,12 @@ describe("landing page", () => {
     expect(pageSource).not.toContain("<footer>\n      <span>Eyloo GmbH</span>");
   });
 
+  test("links to privacy, contact, and terms pages from the footer", () => {
+    expect(pageSource).toContain('href="/privacy/"');
+    expect(pageSource).toContain('href="/contact/"');
+    expect(pageSource).toContain('href="/terms/"');
+  });
+
   test("references product screenshots from the public screenshots directory", () => {
     expect(pageSource).toContain("/screenshots/chrome-export-panel.png");
     expect(pageSource).toContain("/screenshots/extension-popup.png");
