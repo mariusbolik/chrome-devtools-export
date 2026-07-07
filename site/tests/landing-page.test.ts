@@ -84,8 +84,10 @@ describe("landing page", () => {
     }
   });
 
-  test("keeps the hero brand headline from breaking inside the word", () => {
-    expect(pageSource).toContain("font-size: clamp(42px, 6vw, 64px);");
+  test("uses the requested descriptive hero headline", () => {
+    expect(pageSource).toContain("<h1 id=\"hero-title\">Export Console Logs, Network Requests, etc. from Google Chrome DevTools</h1>");
+    expect(pageSource).not.toContain("<h1 id=\"hero-title\">DevToolsExport</h1>");
+    expect(pageSource).toContain("font-size: clamp(34px, 5vw, 58px);");
     expect(pageSource).toContain("word-break: keep-all;");
     expect(pageSource).toContain("h2,\n  h3,\n  p {\n    overflow-wrap: anywhere;");
     expect(pageSource).not.toContain("h1,\n  h2,\n  h3,\n  p {\n    overflow-wrap: anywhere;");
