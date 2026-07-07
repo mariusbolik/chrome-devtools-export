@@ -36,9 +36,15 @@ const safeStringify = (value: unknown, depth = 0): string => {
   }
 };
 
+export const normalizeConsoleText = (value: string): string => {
+  const trimmed = value.trim();
+  const emptyError = trimmed.match(/^(Error|[A-Z][A-Za-z]*Error):$/);
+  return emptyError?.[1] ?? value;
+};
+
 const formatError = (error: Error): string => {
   const title = [error.name || "Error", error.message].filter(Boolean).join(": ");
-  if (!error.stack) return title;
+  if (!error.stack) return normalizeConsoleText(title);
   return error.stack.startsWith(title) ? error.stack : `${title}\n${error.stack}`;
 };
 

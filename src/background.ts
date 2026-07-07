@@ -23,6 +23,7 @@ import {
   prepareSnapshotForUpload,
   uploadSnapshot,
 } from "./share-snapshot";
+import { normalizeConsoleText } from "./console-format";
 
 // Background service worker - relays console logs between content scripts and devtools panels
 
@@ -93,9 +94,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Store log
   const log = message.data as ConsoleLogData;
   const entry: ConsoleLogEntry = {
+    ...log,
     id: Date.now() + Math.random(),
     source: "content",
-    ...log,
+    text: normalizeConsoleText(log.text),
   };
 
   tabLogs[tabId].push(entry);
