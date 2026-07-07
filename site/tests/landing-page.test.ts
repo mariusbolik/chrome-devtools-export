@@ -85,12 +85,24 @@ describe("landing page", () => {
   });
 
   test("uses the requested descriptive hero headline", () => {
-    expect(pageSource).toContain("<h1 id=\"hero-title\">Export Console Logs, Network Requests, etc. from Google Chrome DevTools</h1>");
+    expect(pageSource).toContain("<h1 id=\"hero-title\">Export Content from Chrome DevTools</h1>");
+    expect(pageSource).not.toContain("Export Console Logs, Network Requests, etc. from Google Chrome DevTools");
     expect(pageSource).not.toContain("<h1 id=\"hero-title\">DevToolsExport</h1>");
     expect(pageSource).toContain("font-size: clamp(34px, 5vw, 58px);");
     expect(pageSource).toContain("word-break: keep-all;");
     expect(pageSource).toContain("h2,\n  h3,\n  p {\n    overflow-wrap: anywhere;");
     expect(pageSource).not.toContain("h1,\n  h2,\n  h3,\n  p {\n    overflow-wrap: anywhere;");
+  });
+
+  test("uses updated section headings and unboxed solution steps", () => {
+    expect(pageSource).toContain('<h2 id="solution-title">Create sharable bug reports in one click.</h2>');
+    expect(pageSource).not.toContain("Send the debugging context as a link.");
+    expect(pageSource).toContain(
+      '<h2 id="captured-data-title">Share links to the snapshot of your DevTools with developers to fix bug faster.</h2>',
+    );
+    expect(pageSource).not.toContain("The report is organized like the DevTools data they already use.");
+    expect(pageSource).not.toContain(".steps li,\n  .trust-list div");
+    expect(pageSource).not.toContain("min-height: 86px;");
   });
 
   test("presents the proof screenshots as a simple one-slide carousel", () => {

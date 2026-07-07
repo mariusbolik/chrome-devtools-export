@@ -67,7 +67,7 @@ const softwareApplicationJsonLd = JSON.stringify(
         <div class="hero-grid">
           <div class="hero-copy">
             <p class="eyebrow">Free Chrome extension for better bug reports</p>
-            <h1 id="hero-title">Export Console Logs, Network Requests, etc. from Google Chrome DevTools</h1>
+            <h1 id="hero-title">Export Content from Chrome DevTools</h1>
             <p class="hero-lede">
               Fix bugs faster when users hit a broken state. One click creates a complete, shareable DevTools snapshot with console logs,
               network requests, storage context, browser details, installed extensions, and an optional screenshot.
@@ -107,7 +107,7 @@ const softwareApplicationJsonLd = JSON.stringify(
         <div class="section-inner solution-grid">
           <div class="text-stack">
             <p class="eyebrow">A one-click flow</p>
-            <h2 id="solution-title">Send the debugging context as a link.</h2>
+            <h2 id="solution-title">Create sharable bug reports in one click.</h2>
             <ol class="steps" aria-label="How DevToolsExport works">
               <li>
                 <span>1</span>
@@ -136,7 +136,7 @@ const softwareApplicationJsonLd = JSON.stringify(
         <div class="section-inner">
           <div class="section-heading">
             <p class="eyebrow">What developers receive</p>
-            <h2 id="captured-data-title">The report is organized like the DevTools data they already use.</h2>
+            <h2 id="captured-data-title">Share links to the snapshot of your DevTools with developers to fix bug faster.</h2>
           </div>
 
           <div class="proof-carousel" data-proof-carousel>
@@ -629,7 +629,6 @@ const softwareApplicationJsonLd = JSON.stringify(
     list-style: none;
   }
 
-  .steps li,
   .trust-list div {
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -637,12 +636,10 @@ const softwareApplicationJsonLd = JSON.stringify(
   }
 
   .steps li {
-    min-height: 86px;
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr);
     column-gap: 12px;
     align-items: start;
-    padding: 14px;
   }
 
   .steps span {
