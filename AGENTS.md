@@ -7,6 +7,12 @@
 - The share site stores snapshots in Cloudflare R2 and renders them at `https://devtoolsexport.com/share/<id>/`.
 - Production share links should use `https://devtoolsexport.com`; do not use the `workers.dev` subdomain in extension or site URLs.
 
+## Engineering Principles
+
+- Aim for clean code and maximum simplicity.
+- Prefer the smallest clear implementation that solves the user-facing debugging problem.
+- Add abstractions only when they remove real duplication or make behavior easier to test.
+
 ## Important Paths
 
 - `src/`: extension TypeScript sources.

@@ -76,24 +76,49 @@ p {
   opacity: 0.7;
 }
 
-.primary {
+.primary,
+.secondary {
   width: 100%;
   min-height: 32px;
-  border: none;
   border-radius: 4px;
-  background: var(--accent);
-  color: white;
   font-size: 12px;
   cursor: pointer;
+}
+
+.primary {
+  border: none;
+  background: var(--accent);
+  color: white;
 }
 
 .primary:hover {
   background: var(--accent-hover);
 }
 
-.primary:disabled {
+.secondary {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-light);
+  color: var(--text);
+}
+
+.secondary:hover {
+  background: var(--bg-hover);
+}
+
+.primary:disabled,
+.secondary:disabled {
   cursor: wait;
   opacity: 0.75;
+}
+
+.hint {
+  margin: 8px 0 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-light);
+  color: var(--text-dim);
 }
 
 .progress {

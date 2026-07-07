@@ -14,12 +14,17 @@ function fixtureHtml() {
       <body>
         <nav class="tabs" role="tablist">
           <a id="triage-tab" href="#triage" role="tab" data-tab="triage" aria-selected="true">Triage</a>
+          <a id="ai-summary-tab" href="#ai-summary" role="tab" data-tab="ai-summary" aria-selected="false">AI Summary</a>
           <a id="console-tab" href="#console" role="tab" data-tab="console" aria-selected="false">Console</a>
           <a id="network-tab" href="#network" role="tab" data-tab="network" aria-selected="false">Network</a>
         </nav>
         <a class="issue-row" href="#network">Network issue</a>
         <span id="expiryCountdown" data-expires-at="2099-01-01T00:00:00.000Z">Expires in ...</span>
         <section id="triage" data-panel="triage" role="tabpanel">triage</section>
+        <section id="ai-summary" data-panel="ai-summary" role="tabpanel" hidden>
+          <textarea id="aiSummaryText" readonly>Compact debug summary</textarea>
+          <button type="button" data-copy-target="aiSummaryText">Copy</button>
+        </section>
         <section id="console" data-panel="console" role="tabpanel" hidden>
           <button type="button" data-console-filter="all" class="filter-chip active">All</button>
           <button type="button" data-console-filter="error" class="filter-chip">Errors</button>
@@ -37,6 +42,11 @@ test("share page script keeps hash tabs and console filters usable", async ({ pa
 
   await expect(page.locator('[data-panel="triage"]')).toBeVisible();
   await expect(page.locator('[data-panel="console"]')).toBeHidden();
+
+  await page.locator('a[href="#ai-summary"]').click();
+  await expect(page).toHaveURL(/#ai-summary$/);
+  await expect(page.locator('[data-tab="ai-summary"]')).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator('[data-panel="ai-summary"]')).toBeVisible();
 
   await page.locator('a[href="#console"]').click();
   await expect(page).toHaveURL(/#console$/);

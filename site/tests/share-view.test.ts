@@ -251,6 +251,67 @@ describe("share view model", () => {
     ]);
   });
 
+  test("builds a compact AI summary instead of dumping raw snapshot JSON", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com/app",
+      title: "Example App",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      expiresAt: "2026-08-05T12:00:00.000Z",
+      environment: {
+        browser: {
+          browser: { name: "Chrome", version: "126.0.0.0" },
+          os: { name: "macOS", version: "15.0" },
+        },
+        viewport: { width: 1440, height: 900, devicePixelRatio: 2 },
+        cloudflare: { country: "DE", city: "Berlin" },
+      },
+      network: [
+        {
+          id: 1,
+          method: "GET",
+          url: "https://example.com/api/users",
+          status: 500,
+          time: 980,
+          requestHeaders: {},
+          responseHeaders: {},
+          requestBody: null,
+          responseBody: '{"error":"failed"}',
+          source: "devtools",
+        },
+      ],
+      console: [
+        {
+          id: 1,
+          type: "error",
+          text: "Unhandled Promise Rejection: TypeError: failed to fetch",
+          timestamp: 1_784_000_000_000,
+          source: "content",
+          frameUrl: "https://example.com/app",
+          isTop: true,
+        },
+      ],
+      storage: {
+        localStorage: { feature: "enabled" },
+        sessionStorage: {},
+        cookies: {},
+        indexedDB: {},
+      },
+    });
+
+    const summary = buildShareViewModel(snapshot).aiSummary;
+
+    expect(summary).toContain("DevToolsExport AI debug summary");
+    expect(summary).toContain("Snapshot: #AbC234xy");
+    expect(summary).toContain("Page: Example App (https://example.com/app)");
+    expect(summary).toContain("Browser: Chrome 126.0.0.0");
+    expect(summary).toContain("[error] Failed request: 500 GET /api/users");
+    expect(summary).toContain("[error] Unhandled Promise Rejection: TypeError: failed to fetch");
+    expect(summary).toContain("Storage entries: 1");
+    expect(summary).not.toContain('"schemaVersion"');
+    expect(summary.length).toBeLessThan(5000);
+  });
+
   test("keeps console rows chronological and surfaces popup capture limitations as triage items", () => {
     const snapshot = createSnapshot({
       id: "AbC234xy",

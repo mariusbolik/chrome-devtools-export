@@ -220,6 +220,7 @@ export interface ShareViewModel {
     redactions: number;
     truncations: number;
   };
+  aiSummary: string;
   captureFidelity: CaptureFidelityViewModel;
   issues: IssuesViewModel;
   network: NetworkViewModel;
@@ -236,6 +237,17 @@ export interface ShareViewModel {
     summaryRows: PrivacyViewRow[];
     detailRows: PrivacyViewRow[];
   };
+}
+
+interface AiSummaryParts {
+  browserLabel: string;
+  locationLabel: string;
+  captureFidelity: CaptureFidelityViewModel;
+  issues: IssuesViewModel;
+  network: NetworkViewModel;
+  console: ConsoleViewModel;
+  storage: ShareViewModel["storage"];
+  cdp: CdpViewModel;
 }
 
 const BROWSER_ICON_BASE = "https://cdn.jsdelivr.net/gh/alrra/browser-logos@main/src";
@@ -259,6 +271,14 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
   const consoleModel = buildConsoleViewModel(snapshot.console);
   const captureFidelity = buildCaptureFidelity(snapshot.network);
   const performance = buildPerformanceViewModel(snapshot, cdp);
+  const browserLabel = [browserName, browserVersion].filter(Boolean).join(" ") || "Unknown browser";
+  const locationLabel = [city, country !== "UNKNOWN" ? country : ""].filter(Boolean).join(", ") || "Unknown location";
+  const issues = buildIssuesViewModel(snapshot, cdp, environment, captureFidelity);
+  const storage = {
+    sections: storageSections,
+    totalRows: storageSections.reduce((total, section) => total + section.rows.length, 0),
+  };
+  const privacy = buildPrivacyViewModel(snapshot);
 
   return {
     id: snapshot.id,
@@ -270,11 +290,11 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
     createdAt: snapshot.createdAt,
     expiresAt: snapshot.expiresAt ?? "unknown",
     browser: {
-      label: [browserName, browserVersion].filter(Boolean).join(" ") || "Unknown browser",
+      label: browserLabel,
       iconUrl: browserIconUrl(browserName),
     },
     location: {
-      label: [city, country !== "UNKNOWN" ? country : ""].filter(Boolean).join(", ") || "Unknown location",
+      label: locationLabel,
       flagUrl: country !== "UNKNOWN" ? `${FLAG_BASE}/${country.toLowerCase()}.svg` : null,
     },
     counts: {
@@ -287,20 +307,107 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
       redactions: snapshot.redactions.length,
       truncations: snapshot.truncations.length,
     },
+    aiSummary: buildAiSummary(snapshot, {
+      browserLabel,
+      locationLabel,
+      captureFidelity,
+      issues,
+      network,
+      console: consoleModel,
+      storage,
+      cdp,
+    }),
     captureFidelity,
-    issues: buildIssuesViewModel(snapshot, cdp, environment, captureFidelity),
+    issues,
     network,
     console: consoleModel,
-    storage: {
-      sections: storageSections,
-      totalRows: storageSections.reduce((total, section) => total + section.rows.length, 0),
-    },
+    storage,
     cdp,
     sources: buildSourcesViewModel(cdp),
     performance,
     environment,
-    privacy: buildPrivacyViewModel(snapshot),
+    privacy,
   };
+}
+
+function buildAiSummary(snapshot: ShareSnapshot, parts: AiSummaryParts): string {
+  const failedRequests = parts.network.details
+    .filter((request) => request.statusTone === "error" || request.statusTone === "warn")
+    .slice(0, 5);
+  const slowRequests = parts.network.details
+    .filter((request) => durationNumber(request.time) >= 1000)
+    .slice(0, failedRequests.length > 0 ? 3 : 5);
+  const importantLogs = parts.console.rows
+    .filter((entry) => entry.severity === "error" || entry.severity === "warn")
+    .slice(0, 6);
+  const limitedRequests = parts.network.details.filter((request) => request.sourceLabel === "Resource Timing").length;
+  const lines: string[] = [
+    "DevToolsExport AI debug summary",
+    "Use this compact snapshot before asking for raw JSON.",
+    "",
+    `Snapshot: #${snapshot.id}`,
+    `Page: ${snapshot.page.title || "Untitled"} (${snapshot.page.url})`,
+    `Captured: ${snapshot.createdAt}`,
+    `Expires: ${snapshot.expiresAt ?? "unknown"}`,
+    "",
+    "Environment",
+    `- Browser: ${parts.browserLabel}`,
+    `- Location: ${parts.locationLabel}`,
+  ];
+
+  for (const row of parts.issues.deviceRows.slice(0, 6)) {
+    lines.push(`- ${row.label}: ${row.value}`);
+  }
+
+  lines.push(
+    "",
+    "Capture fidelity",
+    `- ${parts.captureFidelity.label}: ${parts.captureFidelity.detail}`
+  );
+  if (limitedRequests > 0) {
+    lines.push(`- ${limitedRequests} network rows came from Resource Timing and may miss status, headers, payload, and response body.`);
+  }
+
+  lines.push("", "Likely failures");
+  if (parts.issues.items.length > 0) {
+    for (const issue of parts.issues.items.slice(0, 8)) {
+      lines.push(`- [${issue.severity}] ${issue.title}: ${issue.detail} (see ${issue.targetTab})`);
+    }
+  } else {
+    lines.push("- No obvious console, network, or capture problems detected.");
+  }
+
+  lines.push("", "Console");
+  lines.push(`- ${parts.console.rows.length} log entries; ${parts.console.errorCount} errors, ${parts.console.warningCount} warnings.`);
+  if (importantLogs.length > 0) {
+    for (const entry of importantLogs) {
+      lines.push(`- [${entry.severity}] ${entry.message} (${entry.frame})`);
+    }
+  }
+
+  lines.push("", "Network");
+  lines.push(`- ${parts.network.rows.length} requests; ${failedRequests.length} failed.`);
+  for (const request of failedRequests) {
+    lines.push(`- ${request.statusLabel} ${request.method} ${request.name} (${request.sourceLabel}, ${request.time}, ${request.size})`);
+  }
+  for (const request of slowRequests) {
+    lines.push(`- Slow: ${request.method} ${request.name} took ${request.time} (${request.sourceLabel})`);
+  }
+
+  lines.push(
+    "",
+    "Client state",
+    `- Storage entries: ${parts.storage.totalRows}`,
+    `- Installed extensions: ${snapshot.installedExtensions.length}`,
+    `- Screenshot: ${parts.cdp.screenshot.label}`,
+    `- DOM snapshot: ${parts.cdp.domSnapshot.label}`,
+    "",
+    "Privacy",
+    `- Redactions: ${snapshot.redactions.length}; truncations: ${snapshot.truncations.length}.`,
+    "- Secrets, cookies, sensitive body values, precise extension details, and DOM text may be redacted."
+  );
+
+  return lines.join("\n").trim();
 }
 
 function buildPrivacyViewModel(snapshot: ShareSnapshot): ShareViewModel["privacy"] {

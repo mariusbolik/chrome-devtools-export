@@ -93,6 +93,7 @@ const formatDate = (value: string | undefined) => {
 
               <nav class="tabs" role="tablist" aria-label="Snapshot sections">
                 <a id="triage-tab" href="#triage" role="tab" data-tab="triage" aria-controls="triage" aria-selected="true">Triage</a>
+                <a id="ai-summary-tab" href="#ai-summary" role="tab" data-tab="ai-summary" aria-controls="ai-summary" aria-selected="false">AI Summary</a>
                 <a id="page-tab" href="#page" role="tab" data-tab="page" aria-controls="page" aria-selected="false">Page Snapshot</a>
                 <a id="console-tab" href="#console" role="tab" data-tab="console" aria-controls="console" aria-selected="false">Console</a>
                 <a id="resources-tab" href="#resources" role="tab" data-tab="resources" aria-controls="resources" aria-selected="false">Resources</a>
@@ -171,6 +172,13 @@ const formatDate = (value: string | undefined) => {
                   </details>
                 )}
               </section>
+            </div>
+
+            <div class="panel ai-summary-panel" id="ai-summary" data-panel="ai-summary" role="tabpanel" aria-labelledby="ai-summary-tab" hidden>
+              <div class="toolbar">
+                <button class="filter-chip" type="button" data-copy-target="aiSummaryText">Copy Summary</button>
+              </div>
+              <textarea id="aiSummaryText" class="ai-summary-text" readonly>{model.aiSummary}</textarea>
             </div>
 
             <div class="panel page-panel" id="page" data-panel="page" role="tabpanel" aria-labelledby="page-tab" hidden>
@@ -571,6 +579,32 @@ const formatDate = (value: string | undefined) => {
               const severity = row.getAttribute("data-console-severity");
               row.hidden = filter !== "all" && severity !== filter;
             }
+          });
+        }
+
+        for (const button of document.querySelectorAll("[data-copy-target]")) {
+          button.addEventListener("click", async () => {
+            const targetId = button.getAttribute("data-copy-target") || "";
+            const target = document.getElementById(targetId);
+            const text = target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement
+              ? target.value
+              : target?.textContent || "";
+            if (!text) return;
+
+            const initialText = button.textContent || "Copy";
+            try {
+              await navigator.clipboard.writeText(text);
+              button.textContent = "Copied";
+            } catch {
+              if (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) {
+                target.focus();
+                target.select();
+              }
+              button.textContent = "Selected";
+            }
+            window.setTimeout(() => {
+              button.textContent = initialText;
+            }, 1800);
           });
         }
 
@@ -979,6 +1013,22 @@ const formatDate = (value: string | undefined) => {
 
   .filter-chip.warn {
     color: var(--yellow);
+  }
+
+  .ai-summary-text {
+    display: block;
+    width: 100%;
+    min-height: calc(100vh - 220px);
+    margin: 0;
+    padding: 12px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    outline: none;
+    resize: vertical;
+    background: var(--bg);
+    color: var(--text);
+    font: 12px/1.5 "SF Mono", Monaco, monospace;
+    white-space: pre;
   }
 
   .key-values {
