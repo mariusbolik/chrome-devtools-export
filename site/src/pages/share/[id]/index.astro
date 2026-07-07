@@ -92,9 +92,9 @@ const pathFor = (url: string) => {
                   <em>{model.counts.consoleErrors} errors</em>
                 </div>
                 <div class="metric">
-                  <span>Storage</span>
+                  <span>Storage Areas</span>
                   <strong>{model.counts.storageBuckets}</strong>
-                  <em>buckets</em>
+                  <em>areas</em>
                 </div>
                 <div class="metric">
                   <span>Extensions</span>
@@ -102,14 +102,14 @@ const pathFor = (url: string) => {
                   <em>installed</em>
                 </div>
                 <div class="metric warn">
-                  <span>Redactions</span>
+                  <span>Redacted Fields</span>
                   <strong>{model.counts.redactions}</strong>
-                  <em>{model.counts.truncations} trims</em>
+                  <em>{model.counts.truncations} size trims</em>
                 </div>
               </section>
 
               <nav class="tabs" aria-label="Snapshot sections">
-                <label for="tab-summary">Summary</label>
+                <label for="tab-summary">Overview</label>
                 <label for="tab-screenshot">Screenshot</label>
                 <label for="tab-network">Network</label>
                 <label for="tab-console">Console</label>
@@ -127,7 +127,7 @@ const pathFor = (url: string) => {
                 <div><dt>Domain</dt><dd>{model.domain}</dd></div>
                 <div><dt>Schema</dt><dd>{snapshot.schemaVersion}</dd></div>
               </dl>
-              <h2>Notices</h2>
+              <h2>Privacy &amp; Size Changes</h2>
               <div class="notice-list">
                 {[...snapshot.redactions, ...snapshot.truncations].map((notice) => (
                   <div class="notice-row">
@@ -135,7 +135,7 @@ const pathFor = (url: string) => {
                     <em>{notice.reason}</em>
                   </div>
                 ))}
-                {snapshot.redactions.length + snapshot.truncations.length === 0 && <p class="empty">No redactions or truncations recorded</p>}
+                {snapshot.redactions.length + snapshot.truncations.length === 0 && <p class="empty">No privacy redactions or size trims recorded</p>}
               </div>
             </div>
 
