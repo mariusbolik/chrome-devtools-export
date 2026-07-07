@@ -4,6 +4,11 @@ export interface NetworkRequest {
   url: string;
   status: number;
   time: number;
+  source?: "devtools" | "resource-timing";
+  initiatorType?: string;
+  transferSize?: number;
+  encodedBodySize?: number;
+  decodedBodySize?: number;
   requestHeaders: Record<string, string>;
   responseHeaders: Record<string, string>;
   requestBody: string | null;

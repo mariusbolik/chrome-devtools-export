@@ -174,7 +174,7 @@ function enrichSnapshot(
     userAgent?: string | null;
   }
 ): ShareSnapshot {
-  const userAgent = input.userAgent ?? snapshot.environment.userAgent ?? "";
+  const userAgent = snapshot.environment.userAgent ?? input.userAgent ?? "";
   const parser = new UAParser(userAgent);
 
   return {

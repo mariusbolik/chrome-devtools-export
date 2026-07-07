@@ -90,6 +90,7 @@ function initShare() {
   const status = $("shareStatus");
   const result = $("shareResult") as HTMLAnchorElement;
   const includeSensitive = $("shareIncludeSensitive") as HTMLInputElement;
+  const includeScreenshot = $("shareIncludeScreenshot") as HTMLInputElement;
   const confirm = $("shareConfirm") as HTMLButtonElement;
 
   const setOpen = (open: boolean) => {
@@ -100,6 +101,7 @@ function initShare() {
       result.removeAttribute("href");
       result.textContent = "";
       includeSensitive.checked = false;
+      includeScreenshot.checked = true;
       confirm.disabled = false;
     }
   };
@@ -119,6 +121,7 @@ function initShare() {
         networkRequests,
         consoleLogs,
         includeSensitive: includeSensitive.checked,
+        includeScreenshot: includeScreenshot.checked,
       });
       result.href = share.url;
       result.textContent = share.url;
@@ -190,6 +193,7 @@ function connectConsolePort() {
         inspectedTabId,
         networkRequests,
         consoleLogs,
+        includeScreenshot: true,
       })
         .then((share) => {
           consolePort?.postMessage({
@@ -284,6 +288,7 @@ function initNetwork() {
         url: req.request.url,
         status: req.response.status,
         time: Math.round(req.time || 0),
+        source: "devtools",
         requestHeaders: headers(req.request.headers),
         responseHeaders: headers(req.response.headers),
         requestBody: req.request.postData?.text || null,

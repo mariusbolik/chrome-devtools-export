@@ -14,6 +14,11 @@ export interface NetworkRequestSnapshot {
   url: string;
   status: number;
   time: number;
+  source?: "devtools" | "resource-timing";
+  initiatorType?: string;
+  transferSize?: number;
+  encodedBodySize?: number;
+  decodedBodySize?: number;
   requestHeaders: Record<string, string>;
   responseHeaders: Record<string, string>;
   requestBody: string | null;
@@ -41,9 +46,9 @@ export interface ConsoleLogSnapshot {
 }
 
 export interface InstalledExtensionSnapshot {
-  id: string;
+  id?: string;
   name: string;
-  version: string;
+  version?: string;
   enabled: boolean;
   type?: string;
   installType?: string;
@@ -64,6 +69,25 @@ export interface EnvironmentSnapshot {
   viewport?: Record<string, unknown>;
   browser?: Record<string, unknown>;
   cloudflare?: Record<string, unknown>;
+}
+
+export interface PageDiagnosticsSnapshot {
+  document?: {
+    readyState?: string;
+    visibilityState?: string;
+    online?: boolean;
+  };
+  navigation?: {
+    type?: string;
+    duration?: number;
+    domContentLoaded?: number;
+    loadEvent?: number;
+    responseEnd?: number;
+  };
+  paints?: Array<{
+    name: string;
+    startTime: number;
+  }>;
 }
 
 export interface CdpSnapshot {
@@ -99,6 +123,7 @@ export interface ShareSnapshot {
     version?: string;
   };
   environment: EnvironmentSnapshot;
+  pageDiagnostics?: PageDiagnosticsSnapshot;
   installedExtensions: InstalledExtensionSnapshot[];
   network: NetworkRequestSnapshot[];
   console: ConsoleLogSnapshot[];
@@ -106,6 +131,7 @@ export interface ShareSnapshot {
   cdp: CdpSnapshot;
   redactions: SnapshotNotice[];
   truncations: SnapshotNotice[];
+  captureNotices?: SnapshotNotice[];
 }
 
 export interface CreateSnapshotInput {
@@ -117,6 +143,7 @@ export interface CreateSnapshotInput {
   expiresAt?: string;
   extension?: ShareSnapshot["extension"];
   environment?: EnvironmentSnapshot;
+  pageDiagnostics?: PageDiagnosticsSnapshot;
   installedExtensions?: InstalledExtensionSnapshot[];
   network?: NetworkRequestSnapshot[];
   console?: ConsoleLogSnapshot[];
@@ -124,6 +151,7 @@ export interface CreateSnapshotInput {
   cdp?: CdpSnapshot;
   redactions?: SnapshotNotice[];
   truncations?: SnapshotNotice[];
+  captureNotices?: SnapshotNotice[];
 }
 
 export interface RedactionResult {
@@ -170,6 +198,7 @@ export function createSnapshot(input: CreateSnapshotInput): ShareSnapshot {
     },
     extension: input.extension ?? {},
     environment: input.environment ?? {},
+    pageDiagnostics: input.pageDiagnostics,
     installedExtensions: input.installedExtensions ?? [],
     network: input.network ?? [],
     console: input.console ?? [],
@@ -182,6 +211,7 @@ export function createSnapshot(input: CreateSnapshotInput): ShareSnapshot {
     cdp: input.cdp ?? {},
     redactions: input.redactions ?? [],
     truncations: input.truncations ?? [],
+    captureNotices: input.captureNotices ?? [],
   };
 }
 
@@ -217,7 +247,17 @@ export function redactSnapshot(
   next.console = next.console.map((entry, index) => ({
     ...entry,
     text: redactSensitiveText(entry.text, `console[${index}].text`, redactions),
+    frameUrl: entry.frameUrl ? redactUrl(entry.frameUrl, `console[${index}].frameUrl`, redactions) : entry.frameUrl,
+    args: entry.args ? redactUnknownValue(entry.args, `console[${index}].args`, redactions, "Sensitive console metadata redacted") as unknown[] : entry.args,
+    stackTrace: entry.stackTrace
+      ? redactUnknownValue(entry.stackTrace, `console[${index}].stackTrace`, redactions, "Sensitive console metadata redacted")
+      : entry.stackTrace,
   }));
+
+  next.installedExtensions = next.installedExtensions.map((extension, index) =>
+    redactInstalledExtension(extension, `installedExtensions[${index}]`, redactions)
+  );
+  next.environment.cloudflare = redactCloudflareLocation(next.environment.cloudflare, "environment.cloudflare", redactions);
 
   next.storage.localStorage = redactRecord(next.storage.localStorage, "storage.localStorage", redactions);
   next.storage.sessionStorage = redactRecord(next.storage.sessionStorage, "storage.sessionStorage", redactions);
@@ -233,6 +273,12 @@ export function redactSnapshot(
   }
   if (next.cdp.cookies) {
     next.cdp.cookies = redactCdpCookies(next.cdp.cookies, "cdp.cookies", redactions);
+  }
+  if (next.cdp.pageAssets) {
+    next.cdp.pageAssets = redactPageAssets(next.cdp.pageAssets, "cdp.pageAssets", redactions);
+  }
+  if (next.cdp.pageResources) {
+    next.cdp.pageResources = redactPageResources(next.cdp.pageResources, "cdp.pageResources", redactions);
   }
 
   next.redactions = [...next.redactions, ...redactions];
@@ -391,6 +437,43 @@ function redactRecord(
   );
 }
 
+function redactInstalledExtension(
+  extension: InstalledExtensionSnapshot,
+  path: string,
+  redactions: SnapshotNotice[]
+): InstalledExtensionSnapshot {
+  if (extension.id !== undefined) redactions.push({ path: `${path}.id`, reason: "Installed extension identifier redacted" });
+  if (extension.version !== undefined) redactions.push({ path: `${path}.version`, reason: "Installed extension version redacted" });
+  if (extension.installType !== undefined) redactions.push({ path: `${path}.installType`, reason: "Installed extension install type redacted" });
+  if (extension.permissions !== undefined) redactions.push({ path: `${path}.permissions`, reason: "Installed extension permissions redacted" });
+  if (extension.hostPermissions !== undefined) redactions.push({ path: `${path}.hostPermissions`, reason: "Installed extension host permissions redacted" });
+
+  return {
+    name: extension.name,
+    enabled: extension.enabled,
+    type: extension.type,
+  };
+}
+
+function redactCloudflareLocation(
+  cloudflare: Record<string, unknown> | undefined,
+  path: string,
+  redactions: SnapshotNotice[]
+): Record<string, unknown> | undefined {
+  if (!cloudflare) return cloudflare;
+
+  const keep: Record<string, unknown> = {};
+  if (cloudflare.country !== undefined) keep.country = cloudflare.country;
+  if (cloudflare.colo !== undefined) keep.colo = cloudflare.colo;
+
+  for (const key of Object.keys(cloudflare)) {
+    if (key === "country" || key === "colo") continue;
+    redactions.push({ path: `${path}.${key}`, reason: "Precise location metadata redacted" });
+  }
+
+  return keep;
+}
+
 function redactArray(value: unknown[], path: string, redactions: SnapshotNotice[]): unknown[] {
   return value.map((item, index) => redactUnknownValue(item, `${path}[${index}]`, redactions, "Sensitive field"));
 }
@@ -509,6 +592,10 @@ function redactStructuredTextValue(
   redactions: SnapshotNotice[],
   reason: string
 ): string {
+  if (isSafeHttpUrl(value)) {
+    return redactUrl(value, path, redactions);
+  }
+
   const json = parseJson(value);
   if (json.ok) {
     const redacted = redactUnknownValue(json.value, path, redactions, reason);
@@ -566,6 +653,40 @@ function redactCdpCookies(value: unknown, path: string, redactions: SnapshotNoti
   }
 
   return value;
+}
+
+function redactPageAssets(value: unknown, path: string, redactions: SnapshotNotice[]): unknown {
+  if (!isRecord(value)) return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => {
+      const childPath = `${path}.${key}`;
+      if (Array.isArray(child)) {
+        return [
+          key,
+          child.map((item, index) => typeof item === "string" ? redactUrl(item, `${childPath}[${index}]`, redactions) : item),
+        ];
+      }
+      return [key, redactUnknownValue(child, childPath, redactions, "Sensitive asset metadata redacted")];
+    })
+  );
+}
+
+function redactPageResources(value: unknown, path: string, redactions: SnapshotNotice[]): unknown {
+  if (!Array.isArray(value)) return value;
+
+  return value.map((item, index) => {
+    if (!isRecord(item)) return item;
+    return Object.fromEntries(
+      Object.entries(item).map(([key, child]) => {
+        const childPath = `${path}[${index}].${key}`;
+        if (key === "name" && typeof child === "string") {
+          return [key, redactUrl(child, childPath, redactions)];
+        }
+        return [key, redactUnknownValue(child, childPath, redactions, "Sensitive resource metadata redacted")];
+      })
+    );
+  });
 }
 
 function limitBodyPreview(body: string, path: string, redactions: SnapshotNotice[]): string {

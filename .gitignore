@@ -7,6 +7,7 @@ dist/
 site/dist/
 site/.astro/
 site/.wrangler/
+site/test-results/
 
 # logs
 *.log

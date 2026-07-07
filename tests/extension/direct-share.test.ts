@@ -17,14 +17,38 @@ describe("direct share snapshot input", () => {
         indexedDB: {},
       },
       resources: [
-        { name: "https://example.com/app.js", initiatorType: "script", duration: 12.4 },
-        { name: "https://example.com/style.css", initiatorType: "link", duration: 4.2 },
+        {
+          name: "https://example.com/app.js",
+          initiatorType: "script",
+          duration: 12.4,
+          transferSize: 128000,
+          encodedBodySize: 120000,
+          decodedBodySize: 260000,
+          responseStatus: 200,
+        },
+        { name: "https://example.com/style.css", initiatorType: "link", duration: 4.2, responseStatus: 0 },
       ],
+      pageDiagnostics: {
+        document: {
+          readyState: "complete",
+          visibilityState: "visible",
+          online: true,
+        },
+        navigation: {
+          type: "navigate",
+          duration: 530.4,
+          domContentLoaded: 240.2,
+          loadEvent: 510.9,
+          responseEnd: 180.5,
+        },
+        paints: [{ name: "first-contentful-paint", startTime: 320.5 }],
+      },
       assets: {
         images: ["https://example.com/logo.png"],
         scripts: ["https://example.com/app.js"],
         stylesheets: ["https://example.com/style.css"],
       },
+      captureNotices: [{ path: "page", reason: "Content script capture failed; uploaded tab metadata only" }],
     };
 
     const input = buildDirectSnapshotInput({
@@ -41,10 +65,15 @@ describe("direct share snapshot input", () => {
     expect(input.network).toEqual([
       {
         id: 1,
-        method: "GET",
+        method: "UNKNOWN",
         url: "https://example.com/app.js",
-        status: 0,
+        status: 200,
         time: 12,
+        source: "resource-timing",
+        initiatorType: "script",
+        transferSize: 128000,
+        encodedBodySize: 120000,
+        decodedBodySize: 260000,
         requestHeaders: {},
         responseHeaders: {},
         requestBody: null,
@@ -52,10 +81,12 @@ describe("direct share snapshot input", () => {
       },
       {
         id: 2,
-        method: "GET",
+        method: "UNKNOWN",
         url: "https://example.com/style.css",
         status: 0,
         time: 4,
+        source: "resource-timing",
+        initiatorType: "link",
         requestHeaders: {},
         responseHeaders: {},
         requestBody: null,
@@ -64,6 +95,9 @@ describe("direct share snapshot input", () => {
     ]);
     expect(input.storage?.localStorage).toEqual({ token: "secret" });
     expect(input.cdp?.pageAssets).toEqual(page.assets);
+    expect(input.cdp?.pageResources).toEqual(page.resources);
+    expect(input.pageDiagnostics).toEqual(page.pageDiagnostics);
     expect(input.cdp?.errors).toEqual(["Page.captureScreenshot: denied"]);
+    expect(input.captureNotices).toEqual([{ path: "page", reason: "Content script capture failed; uploaded tab metadata only" }]);
   });
 });

@@ -18,14 +18,6 @@ const formatDate = (value: string | undefined) => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 };
 
-const pathFor = (url: string) => {
-  try {
-    const parsed = new URL(url);
-    return `${parsed.pathname}${parsed.search}`;
-  } catch {
-    return url;
-  }
-};
 ---
 
 <!doctype html>
@@ -45,15 +37,6 @@ const pathFor = (url: string) => {
       ) : (
         <main class="app-shell">
           <section class="details">
-            <input checked id="tab-summary" name="tabs" type="radio" />
-            <input id="tab-screenshot" name="tabs" type="radio" />
-            <input id="tab-network" name="tabs" type="radio" />
-            <input id="tab-console" name="tabs" type="radio" />
-            <input id="tab-storage" name="tabs" type="radio" />
-            <input id="tab-cdp" name="tabs" type="radio" />
-            <input id="tab-environment" name="tabs" type="radio" />
-            <input id="tab-json" name="tabs" type="radio" />
-
             <div class="sticky-shell">
               <header class="topbar">
                 <div class="brand">
@@ -82,9 +65,14 @@ const pathFor = (url: string) => {
 
               <section class="summary-grid">
                 <div class="metric">
+                  <span>Triage</span>
+                  <strong>{model.issues.items.length}</strong>
+                  <em>{model.issues.items.filter((issue) => issue.severity === "error").length} errors</em>
+                </div>
+                <div class="metric">
                   <span>Network</span>
                   <strong>{model.counts.network}</strong>
-                  <em>{model.counts.networkErrors} errors</em>
+                  <em>{model.counts.networkErrors} failed</em>
                 </div>
                 <div class="metric">
                   <span>Console</span>
@@ -92,150 +80,100 @@ const pathFor = (url: string) => {
                   <em>{model.counts.consoleErrors} errors</em>
                 </div>
                 <div class="metric">
-                  <span>Storage Areas</span>
-                  <strong>{model.counts.storageBuckets}</strong>
-                  <em>areas</em>
+                  <span>Client State</span>
+                  <strong>{model.storage.totalRows}</strong>
+                  <em>{model.counts.installedExtensions} extensions</em>
                 </div>
-                <div class="metric">
-                  <span>Extensions</span>
-                  <strong>{model.counts.installedExtensions}</strong>
-                  <em>installed</em>
-                </div>
-                <div class="metric warn">
-                  <span>Redacted Fields</span>
-                  <strong>{model.counts.redactions}</strong>
-                  <em>{model.counts.truncations} size trims</em>
+                <div class={`metric ${model.captureFidelity.tone}`}>
+                  <span>Capture</span>
+                  <strong>{model.captureFidelity.label}</strong>
+                  <em>{model.counts.redactions} redactions</em>
                 </div>
               </section>
 
-              <nav class="tabs" aria-label="Snapshot sections">
-                <label for="tab-summary">Overview</label>
-                <label for="tab-screenshot">Screenshot</label>
-                <label for="tab-network">Network</label>
-                <label for="tab-console">Console</label>
-                <label for="tab-storage">Storage</label>
-                <label for="tab-cdp">DOM/CDP</label>
-                <label for="tab-environment">Environment</label>
-                <label for="tab-json">Raw JSON</label>
+              <nav class="tabs" role="tablist" aria-label="Snapshot sections">
+                <a id="triage-tab" href="#triage" role="tab" data-tab="triage" aria-controls="triage" aria-selected="true">Triage</a>
+                <a id="page-tab" href="#page" role="tab" data-tab="page" aria-controls="page" aria-selected="false">Page Snapshot</a>
+                <a id="console-tab" href="#console" role="tab" data-tab="console" aria-controls="console" aria-selected="false">Console</a>
+                <a id="resources-tab" href="#resources" role="tab" data-tab="resources" aria-controls="resources" aria-selected="false">Resources</a>
+                <a id="network-tab" href="#network" role="tab" data-tab="network" aria-controls="network" aria-selected="false">Network</a>
+                <a id="storage-tab" href="#storage" role="tab" data-tab="storage" aria-controls="storage" aria-selected="false">Storage</a>
+                <a id="performance-tab" href="#performance" role="tab" data-tab="performance" aria-controls="performance" aria-selected="false">Performance Summary</a>
+                <a id="environment-tab" href="#environment" role="tab" data-tab="environment" aria-controls="environment" aria-selected="false">Environment</a>
+                <a id="json-tab" href="#json" role="tab" data-tab="json" aria-controls="json" aria-selected="false">Raw JSON</a>
               </nav>
             </div>
 
-            <div class="panel summary-panel">
+            <div class="panel triage-panel" id="triage" data-panel="triage" role="tabpanel" aria-labelledby="triage-tab">
               <dl class="key-values">
                 <div><dt>Captured</dt><dd>{formatDate(model.createdAt)}</dd></div>
                 <div><dt>Expires</dt><dd>{formatDate(model.expiresAt)}</dd></div>
                 <div><dt>Domain</dt><dd>{model.domain}</dd></div>
                 <div><dt>Schema</dt><dd>{snapshot.schemaVersion}</dd></div>
               </dl>
-              <h2>Privacy &amp; Size Changes</h2>
-              <div class="privacy-grid">
-                {model.privacy.summaryRows.map((row) => (
-                  <div class={`privacy-card ${row.tone}`}>
-                    <span>{row.label}</span>
-                    <strong>{row.value}</strong>
-                  </div>
-                ))}
-              </div>
-              {model.privacy.detailRows.length > 0 ? (
-                <details class="raw-details">
-                  <summary><span>Grouped Details</span><em>{model.privacy.detailRows.length} groups</em></summary>
-                  <div class="privacy-detail-table">
-                    <div class="privacy-detail-row table-header"><span>Change</span><span>Count</span></div>
-                    {model.privacy.detailRows.map((row) => (
-                      <div class={`privacy-detail-row ${row.tone}`}>
-                        <span>{row.label}</span>
-                        <strong>{row.value}</strong>
-                      </div>
+
+              <section class={`capture-banner ${model.captureFidelity.tone}`}>
+                <strong>{model.captureFidelity.label}</strong>
+                <span>{model.captureFidelity.detail}</span>
+              </section>
+
+              <section class="ui-section">
+                <h2>What likely failed</h2>
+                {model.issues.items.length > 0 ? (
+                  <div class="issue-list">
+                    {model.issues.items.map((issue) => (
+                      <a class={`issue-row ${issue.severity}`} href={`#${issue.targetTab}`}>
+                        <span>{issue.severity}</span>
+                        <strong>{issue.title}</strong>
+                        <em>{issue.detail}</em>
+                      </a>
                     ))}
                   </div>
-                </details>
-              ) : (
-                <p class="empty">No privacy redactions or size trims recorded</p>
-              )}
-            </div>
+                ) : (
+                  <p class="empty compact">No obvious console, network, or capture problems detected.</p>
+                )}
+              </section>
 
-            <div class="panel screenshot-panel">
-              {model.cdp.hasScreenshot && model.cdp.screenshot.src ? (
-                <figure class="screenshot-frame">
-                  <img class="screenshot" src={model.cdp.screenshot.src} alt="Captured page screenshot" />
-                  <figcaption>Captured page screenshot</figcaption>
-                </figure>
-              ) : (
-                <p class="empty">No screenshot included</p>
-              )}
-            </div>
-
-            <div class="panel network-panel">
-              <div class="row header-row"><span>Method</span><span>Status</span><span>Path</span><span>Time</span></div>
-              {snapshot.network.map((request) => (
-                <details class="network-item">
-                  <summary class="row network-summary">
-                    <span class={`method ${request.method.toLowerCase()}`}>{request.method}</span>
-                    <span class={request.status >= 400 ? "status error" : request.status >= 300 ? "status redirect" : "status ok"}>{request.status}</span>
-                    <span class="path">{pathFor(request.url)}</span>
-                    <span>{request.time}ms</span>
-                  </summary>
-                  <div class="network-details">
-                    <section class="ui-section">
-                      <h2>Request Body</h2>
-                      {request.requestBody ? <pre>{request.requestBody}</pre> : <p class="empty compact">No request body captured</p>}
-                    </section>
-                    <section class="ui-section">
-                      <h2>Response Body</h2>
-                      {request.responseBody ? <pre>{request.responseBody}</pre> : <p class="empty compact">No response body captured</p>}
-                    </section>
-                    <section class="ui-section">
-                      <h2>Request Headers</h2>
-                      {Object.keys(request.requestHeaders).length > 0 ? <pre>{JSON.stringify(request.requestHeaders, null, 2)}</pre> : <p class="empty compact">No request headers captured</p>}
-                    </section>
-                    <section class="ui-section">
-                      <h2>Response Headers</h2>
-                      {Object.keys(request.responseHeaders).length > 0 ? <pre>{JSON.stringify(request.responseHeaders, null, 2)}</pre> : <p class="empty compact">No response headers captured</p>}
-                    </section>
-                  </div>
-                </details>
-              ))}
-              {snapshot.network.length === 0 && <p class="empty">No requests captured</p>}
-            </div>
-
-            <div class="panel console-panel">
-              {snapshot.console.map((entry) => (
-                <div class={`log-row ${entry.type}`}>
-                  <span>{entry.type}</span>
-                  <pre>{entry.text}</pre>
+              <section class="ui-section">
+                <h2>User device context</h2>
+                <div class="kv-table">
+                  {model.issues.deviceRows.map((row) => (
+                    <div class="kv-row">
+                      <span>{row.label}</span>
+                      <code class={row.valueType}>{row.value}</code>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {snapshot.console.length === 0 && <p class="empty">No console logs captured</p>}
-            </div>
+              </section>
 
-            <div class="panel storage-panel">
-              {model.storage.sections.map((section) => (
-                <details class="storage-bucket" open={section.rows.length > 0}>
-                  <summary>
-                    <span>{section.label}</span>
-                    <em>{section.rows.length} {section.rows.length === 1 ? "entry" : "entries"}</em>
-                  </summary>
-                  {section.rows.length > 0 ? (
-                    <div class="storage-table" role="table" aria-label={`${section.label} entries`}>
-                      <div class="storage-row storage-header" role="row">
-                        <span role="columnheader">Key</span>
-                        <span role="columnheader">Value</span>
-                      </div>
-                      {section.rows.map((row) => (
-                        <div class="storage-row" role="row">
-                          <span class="storage-key" role="cell">{row.key}</span>
-                          <code class={`storage-value ${row.valueType}`} role="cell">{row.value}</code>
+              <section class="ui-section">
+                <h2>Privacy summary</h2>
+                <div class="privacy-grid compact-grid">
+                  {model.privacy.summaryRows.map((row) => (
+                    <div class={`privacy-card ${row.tone}`}>
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                    </div>
+                  ))}
+                </div>
+                {model.privacy.detailRows.length > 0 && (
+                  <details class="raw-details">
+                    <summary><span>Grouped redactions and trims</span><em>{model.privacy.detailRows.length} groups</em></summary>
+                    <div class="privacy-detail-table">
+                      <div class="privacy-detail-row table-header"><span>Change</span><span>Count</span></div>
+                      {model.privacy.detailRows.map((row) => (
+                        <div class={`privacy-detail-row ${row.tone}`}>
+                          <span>{row.label}</span>
+                          <strong>{row.value}</strong>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p class="empty">No entries captured</p>
-                  )}
-                </details>
-              ))}
+                  </details>
+                )}
+              </section>
             </div>
 
-            <div class="panel cdp-panel">
+            <div class="panel page-panel" id="page" data-panel="page" role="tabpanel" aria-labelledby="page-tab" hidden>
               <div class="status-grid">
                 {model.cdp.statusRows.map((row) => (
                   <div class={`status-card ${row.tone}`}>
@@ -244,6 +182,15 @@ const pathFor = (url: string) => {
                   </div>
                 ))}
               </div>
+
+              {model.cdp.hasScreenshot && model.cdp.screenshot.src ? (
+                <figure class="screenshot-frame">
+                  <img class="screenshot" src={model.cdp.screenshot.src} alt="Captured page screenshot" />
+                  <figcaption>Captured page screenshot</figcaption>
+                </figure>
+              ) : (
+                null
+              )}
 
               <section class="ui-section">
                 <h2>Layout</h2>
@@ -261,11 +208,166 @@ const pathFor = (url: string) => {
                 )}
               </section>
 
+              {model.cdp.domSnapshot.state === "available" ? (
+                <details class="raw-details">
+                  <summary><span>DOM snapshot state</span><em>{model.cdp.domSnapshot.label}</em></summary>
+                  <pre>{JSON.stringify(snapshot.cdp.domSnapshot, null, 2)}</pre>
+                </details>
+              ) : (
+                <section class="ui-section">
+                  <h2>DOM snapshot state</h2>
+                  {model.cdp.domSnapshot.state === "redacted" ? (
+                    <p class="empty compact">DOM snapshot was redacted before upload because it can contain private page text, attributes, and user-entered values.</p>
+                  ) : (
+                    <p class="empty compact">No DOM snapshot captured</p>
+                  )}
+                </section>
+              )}
+            </div>
+
+            <div class="panel console-panel" id="console" data-panel="console" role="tabpanel" aria-labelledby="console-tab" hidden>
+              <div class="toolbar">
+                <button class="filter-chip active" type="button" data-console-filter="all">All {model.counts.console}</button>
+                <button class="filter-chip error" type="button" data-console-filter="error">Errors {model.console.errorCount}</button>
+                <button class="filter-chip warn" type="button" data-console-filter="warn">Warnings {model.console.warningCount}</button>
+              </div>
+              {model.console.rows.map((entry) => (
+                <details class={`log-row ${entry.severity}`} data-console-severity={entry.severity} open={entry.severity === "error"}>
+                  <summary>
+                    <span>{entry.type}</span>
+                    <strong>{entry.message}</strong>
+                    <em>{entry.frame}</em>
+                    <time>{entry.timestamp}</time>
+                  </summary>
+                  <pre>{snapshot.console.find((raw) => raw.id === entry.id)?.text}</pre>
+                </details>
+              ))}
+              {model.console.rows.length === 0 && <p class="empty">No console logs captured</p>}
+            </div>
+
+            <div class="panel resources-panel" id="resources" data-panel="resources" role="tabpanel" aria-labelledby="resources-tab" hidden>
+              {model.sources.sections.length > 0 ? (
+                model.sources.sections.map((section) => (
+                  <details class="source-group" open>
+                    <summary><span>{section.origin}</span><em>{section.rows.length} resources</em></summary>
+                    <div class="asset-table">
+                      <div class="asset-row table-header"><span>Type</span><span>Path</span><span>Duration</span></div>
+                      {section.rows.map((resource) => (
+                        <div class="asset-row">
+                          <span>{resource.type}</span>
+                          {resource.safeUrl !== "#" ? <a href={resource.safeUrl}>{resource.path}</a> : <span>{resource.path}</span>}
+                          <span>{resource.duration}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ))
+              ) : (
+                <p class="empty">No page assets or resources captured</p>
+              )}
+            </div>
+
+            <div class="panel network-panel" id="network" data-panel="network" role="tabpanel" aria-labelledby="network-tab" hidden>
+              <section class={`capture-banner ${model.captureFidelity.tone}`}>
+                <strong>{model.captureFidelity.label}</strong>
+                <span>{model.captureFidelity.detail}</span>
+              </section>
+              <div class="network-table">
+                <div class="network-row table-header"><span>Name</span><span>Status</span><span>Method</span><span>Source</span><span>Type</span><span>Size</span><span>Time</span></div>
+                {model.network.details.map((request) => (
+                  <details class="network-item">
+                    <summary class="network-row network-summary">
+                      <span class="path"><span class="twisty" aria-hidden="true">›</span>{request.name}</span>
+                      <span class={`status ${request.statusTone}`}>{request.statusLabel}</span>
+                      <span class={`method ${request.method.toLowerCase()}`}>{request.method}</span>
+                      <span class={request.captureNote ? "source limited" : "source"}>{request.sourceLabel}</span>
+                      <span>{request.type}</span>
+                      <span>{request.size}</span>
+                      <span>{request.time}</span>
+                    </summary>
+                    <div class="network-details">
+                      {request.captureNote && <p class="capture-note">{request.captureNote}</p>}
+                      <section class="ui-section">
+                        <h2>Headers</h2>
+                        {request.requestHeaders.length > 0 || request.responseHeaders.length > 0 ? (
+                          <div class="headers-grid">
+                            <h3>Request Headers</h3>
+                            {request.requestHeaders.map((header) => (
+                              <div class="headers-row"><span>{header.name}</span><code>{header.value}</code></div>
+                            ))}
+                            <h3>Response Headers</h3>
+                            {request.responseHeaders.map((header) => (
+                              <div class="headers-row"><span>{header.name}</span><code>{header.value}</code></div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p class="empty compact">{request.captureNote || "No headers captured for this request"}</p>
+                        )}
+                      </section>
+                      <section class="ui-section">
+                        <h2>Payload</h2>
+                        {request.requestBody ? <pre>{request.requestBody}</pre> : <p class="empty compact">{request.captureNote || "No request body captured"}</p>}
+                      </section>
+                      <section class="ui-section">
+                        <h2>Response</h2>
+                        {request.responseBody ? <pre>{request.responseBody}</pre> : <p class="empty compact">{request.captureNote || "No response body captured"}</p>}
+                      </section>
+                      <section class="ui-section">
+                        <h2>Timing</h2>
+                        <div class="kv-table">
+                          <div class="kv-row"><span>Source</span><code>{request.sourceLabel}</code></div>
+                          <div class="kv-row"><span>Duration</span><code>{request.time}</code></div>
+                          <div class="kv-row"><span>Size</span><code>{request.size}</code></div>
+                        </div>
+                      </section>
+                    </div>
+                  </details>
+                ))}
+              </div>
+              {model.network.rows.length === 0 && <p class="empty">No requests captured</p>}
+            </div>
+
+            <div class="panel storage-panel" id="storage" data-panel="storage" role="tabpanel" aria-labelledby="storage-tab" hidden>
+              <div class="application-layout">
+                <aside class="app-tree">
+                  <strong>Storage</strong>
+                  {model.storage.sections.map((section) => <span>{section.label} ({section.rows.length})</span>)}
+                </aside>
+                <div class="application-content">
+                  {model.storage.sections.map((section) => (
+                    <details class="storage-bucket" open={section.rows.length > 0}>
+                      <summary>
+                        <span>{section.label}</span>
+                        <em>{section.rows.length} {section.rows.length === 1 ? "entry" : "entries"}</em>
+                      </summary>
+                      {section.rows.length > 0 ? (
+                        <div class="storage-table" role="table" aria-label={`${section.label} entries`}>
+                          <div class="storage-row storage-header" role="row">
+                            <span role="columnheader">Key</span>
+                            <span role="columnheader">Value</span>
+                          </div>
+                          {section.rows.map((row) => (
+                            <div class="storage-row" role="row">
+                              <span class="storage-key" role="cell">{row.key}</span>
+                              <code class={`storage-value ${row.valueType}`} role="cell">{row.value}</code>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p class="empty">No entries captured</p>
+                      )}
+                    </details>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div class="panel performance-panel" id="performance" data-panel="performance" role="tabpanel" aria-labelledby="performance-tab" hidden>
               <section class="ui-section">
-                <h2>Performance</h2>
-                {model.cdp.performanceRows.length > 0 ? (
+                <h2>Document</h2>
+                {model.performance.documentRows.length > 0 ? (
                   <div class="kv-table">
-                    {model.cdp.performanceRows.map((row) => (
+                    {model.performance.documentRows.map((row) => (
                       <div class="kv-row">
                         <span>{row.label}</span>
                         <code class={row.valueType}>{row.value}</code>
@@ -273,33 +375,64 @@ const pathFor = (url: string) => {
                     ))}
                   </div>
                 ) : (
-                  <p class="empty compact">No performance metrics captured</p>
+                  <p class="empty compact">No document diagnostics captured</p>
                 )}
               </section>
 
               <section class="ui-section">
-                <h2>Page Assets</h2>
-                {model.cdp.assets.length > 0 ? (
-                  <div class="asset-table">
-                    <div class="asset-row table-header"><span>Type</span><span>Path</span></div>
-                    {model.cdp.assets.map((asset) => (
-                      <div class="asset-row">
-                        <span>{asset.type}</span>
-                        {asset.safeUrl !== "#" ? <a href={asset.safeUrl}>{asset.path}</a> : <span>{asset.path}</span>}
+                <h2>Navigation timing</h2>
+                {model.performance.navigationRows.length > 0 ? (
+                  <div class="kv-table">
+                    {model.performance.navigationRows.map((row) => (
+                      <div class="kv-row">
+                        <span>{row.label}</span>
+                        <code class={row.valueType}>{row.value}</code>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p class="empty compact">No page assets captured</p>
+                  <p class="empty compact">No navigation timing captured</p>
                 )}
               </section>
 
               <section class="ui-section">
-                <h2>Page Resources</h2>
-                {model.cdp.resources.length > 0 ? (
+                <h2>Paint timing</h2>
+                {model.performance.paintRows.length > 0 ? (
+                  <div class="kv-table">
+                    {model.performance.paintRows.map((row) => (
+                      <div class="kv-row">
+                        <span>{row.label}</span>
+                        <code class={row.valueType}>{row.value}</code>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="empty compact">No paint timing captured</p>
+                )}
+              </section>
+
+              <section class="ui-section">
+                <h2>CDP performance metrics</h2>
+                {model.performance.cdpRows.length > 0 ? (
+                  <div class="kv-table">
+                    {model.performance.cdpRows.map((row) => (
+                      <div class="kv-row">
+                        <span>{row.label}</span>
+                        <code class={row.valueType}>{row.value}</code>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="empty compact">No CDP performance metrics captured</p>
+                )}
+              </section>
+
+              {model.performance.slowResources.length > 0 && (
+                <section class="ui-section">
+                  <h2>Slow resources</h2>
                   <div class="resource-table">
                     <div class="resource-row table-header"><span>Type</span><span>Path</span><span>Duration</span></div>
-                    {model.cdp.resources.map((resource) => (
+                    {model.performance.slowResources.map((resource) => (
                       <div class="resource-row">
                         <span>{resource.initiatorType}</span>
                         {resource.safeUrl !== "#" ? <a href={resource.safeUrl}>{resource.path}</a> : <span>{resource.path}</span>}
@@ -307,27 +440,11 @@ const pathFor = (url: string) => {
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p class="empty compact">No page resources captured</p>
-                )}
-              </section>
-
-              {model.cdp.errors.length > 0 && (
-                <section class="ui-section">
-                  <h2>CDP Errors</h2>
-                  <div class="error-list">
-                    {model.cdp.errors.map((error) => <code>{error}</code>)}
-                  </div>
                 </section>
               )}
-
-              <details class="raw-details">
-                <summary><span>Raw CDP</span><em>JSON</em></summary>
-                <pre>{JSON.stringify(snapshot.cdp, null, 2)}</pre>
-              </details>
             </div>
 
-            <div class="panel environment-panel">
+            <div class="panel environment-panel" id="environment" data-panel="environment" role="tabpanel" aria-labelledby="environment-tab" hidden>
               {model.environment.sections.map((section) => (
                 <section class="ui-section">
                   <h2>{section.label}</h2>
@@ -375,9 +492,18 @@ const pathFor = (url: string) => {
                 <summary><span>Raw Environment</span><em>JSON</em></summary>
                 <pre>{JSON.stringify({ environment: snapshot.environment, extension: snapshot.extension, installedExtensions: snapshot.installedExtensions }, null, 2)}</pre>
               </details>
+
+              {model.cdp.errors.length > 0 && (
+                <section class="ui-section">
+                  <h2>CDP capture errors</h2>
+                  <div class="error-list">
+                    {model.cdp.errors.map((error) => <code>{error}</code>)}
+                  </div>
+                </section>
+              )}
             </div>
 
-            <div class="panel json-panel">
+            <div class="panel json-panel" id="json" data-panel="json" role="tabpanel" aria-labelledby="json-tab" hidden>
               <pre>{JSON.stringify(snapshot, null, 2)}</pre>
             </div>
           </section>
@@ -386,6 +512,68 @@ const pathFor = (url: string) => {
     }
     <script is:inline>
       (() => {
+        const aliases = {
+          issues: "triage",
+          elements: "page",
+          sources: "resources",
+          application: "storage",
+        };
+        const tabs = Array.from(document.querySelectorAll("[data-tab]"));
+        const panels = Array.from(document.querySelectorAll("[data-panel]"));
+        const normalizeTab = (hash) => {
+          const key = (hash || "#triage").replace(/^#/, "") || "triage";
+          return aliases[key] || key;
+        };
+        const selectTab = (hash, focus = false) => {
+          const key = normalizeTab(hash);
+          const selected = document.querySelector(`[data-tab="${key}"]`);
+          const panel = document.querySelector(`[data-panel="${key}"]`);
+          if (!selected || !panel) return;
+
+          for (const tab of tabs) {
+            const active = tab === selected;
+            tab.setAttribute("aria-selected", String(active));
+            tab.classList.toggle("active", active);
+            tab.setAttribute("tabindex", active ? "0" : "-1");
+          }
+
+          for (const item of panels) {
+            item.hidden = item !== panel;
+          }
+
+          if (focus && selected instanceof HTMLElement) selected.focus();
+        };
+
+        selectTab(window.location.hash);
+        window.addEventListener("hashchange", () => selectTab(window.location.hash, true));
+
+        for (const tab of tabs) {
+          tab.addEventListener("keydown", (event) => {
+            if (!(event instanceof KeyboardEvent)) return;
+            if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+            event.preventDefault();
+            const current = tabs.indexOf(tab);
+            const offset = event.key === "ArrowRight" ? 1 : -1;
+            const next = tabs[(current + offset + tabs.length) % tabs.length];
+            if (next instanceof HTMLAnchorElement) {
+              next.click();
+            }
+          });
+        }
+
+        const consoleButtons = Array.from(document.querySelectorAll("[data-console-filter]"));
+        const consoleRows = Array.from(document.querySelectorAll("[data-console-severity]"));
+        for (const button of consoleButtons) {
+          button.addEventListener("click", () => {
+            const filter = button.getAttribute("data-console-filter") || "all";
+            for (const item of consoleButtons) item.classList.toggle("active", item === button);
+            for (const row of consoleRows) {
+              const severity = row.getAttribute("data-console-severity");
+              row.hidden = filter !== "all" && severity !== filter;
+            }
+          });
+        }
+
         const el = document.getElementById("expiryCountdown");
         if (!el) return;
 
@@ -540,8 +728,8 @@ const pathFor = (url: string) => {
   }
 
   .metric {
-    min-height: 74px;
-    padding: 10px 12px;
+    min-height: 48px;
+    padding: 7px 10px;
     border-right: 1px solid var(--border);
   }
 
@@ -556,12 +744,25 @@ const pathFor = (url: string) => {
     display: block;
     margin: 2px 0;
     color: var(--text);
-    font-size: 24px;
+    font-size: 16px;
     line-height: 1;
   }
 
   .metric.warn strong {
     color: var(--yellow);
+  }
+
+  .metric.error strong {
+    color: var(--red);
+  }
+
+  .metric.ok strong {
+    color: var(--green);
+  }
+
+  .metric:last-child strong {
+    font-size: 13px;
+    line-height: 1.2;
   }
 
   .privacy-grid {
@@ -628,12 +829,6 @@ const pathFor = (url: string) => {
     flex-direction: column;
   }
 
-  .details > input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-  }
-
   .tabs {
     display: flex;
     background: var(--bg-light);
@@ -641,7 +836,7 @@ const pathFor = (url: string) => {
     overflow-x: auto;
   }
 
-  .tabs label {
+  .tabs a {
     padding: 8px 16px;
     border-bottom: 2px solid transparent;
     color: var(--text-dim);
@@ -649,34 +844,141 @@ const pathFor = (url: string) => {
     white-space: nowrap;
   }
 
-  #tab-summary:checked ~ .sticky-shell .tabs label[for="tab-summary"],
-  #tab-screenshot:checked ~ .sticky-shell .tabs label[for="tab-screenshot"],
-  #tab-network:checked ~ .sticky-shell .tabs label[for="tab-network"],
-  #tab-console:checked ~ .sticky-shell .tabs label[for="tab-console"],
-  #tab-storage:checked ~ .sticky-shell .tabs label[for="tab-storage"],
-  #tab-cdp:checked ~ .sticky-shell .tabs label[for="tab-cdp"],
-  #tab-environment:checked ~ .sticky-shell .tabs label[for="tab-environment"],
-  #tab-json:checked ~ .sticky-shell .tabs label[for="tab-json"] {
+  .tabs a.active,
+  .tabs a[aria-selected="true"] {
     color: var(--text);
     border-bottom-color: var(--accent);
   }
 
+  .tabs a:focus-visible,
+  .filter-chip:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: -2px;
+  }
+
   .panel {
-    display: none;
+    display: block;
     flex: 1;
     min-height: 0;
     overflow: auto;
   }
 
-  #tab-summary:checked ~ .summary-panel,
-  #tab-screenshot:checked ~ .screenshot-panel,
-  #tab-network:checked ~ .network-panel,
-  #tab-console:checked ~ .console-panel,
-  #tab-storage:checked ~ .storage-panel,
-  #tab-cdp:checked ~ .cdp-panel,
-  #tab-environment:checked ~ .environment-panel,
-  #tab-json:checked ~ .json-panel {
-    display: block;
+  .panel[hidden] {
+    display: none;
+  }
+
+  .capture-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 38px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-light);
+  }
+
+  .capture-banner strong {
+    color: var(--green);
+    white-space: nowrap;
+  }
+
+  .capture-banner.warn strong {
+    color: var(--yellow);
+  }
+
+  .capture-banner.error strong {
+    color: var(--red);
+  }
+
+  .capture-banner span {
+    color: var(--text-dim);
+    overflow-wrap: anywhere;
+  }
+
+  .issue-list {
+    display: grid;
+  }
+
+  .issue-row {
+    display: grid;
+    grid-template-columns: 72px 180px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .issue-row span {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .issue-row strong {
+    font-weight: 600;
+  }
+
+  .issue-row em {
+    min-width: 0;
+    color: var(--text-dim);
+    font-style: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .issue-row.error {
+    border-left: 2px solid var(--red);
+  }
+
+  .issue-row.error span {
+    color: var(--red);
+  }
+
+  .issue-row.warn {
+    border-left: 2px solid var(--yellow);
+  }
+
+  .issue-row.warn span {
+    color: var(--yellow);
+  }
+
+  .issue-row.info span {
+    color: var(--blue);
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-light);
+  }
+
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text-dim);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .filter-chip.active {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  .filter-chip.error {
+    color: var(--red);
+  }
+
+  .filter-chip.warn {
+    color: var(--yellow);
   }
 
   .key-values {
@@ -734,6 +1036,21 @@ const pathFor = (url: string) => {
     align-items: center;
   }
 
+  .network-table {
+    display: grid;
+    min-width: 900px;
+  }
+
+  .network-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) 92px 82px 128px 110px minmax(130px, 0.8fr) 78px;
+    gap: 8px;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
   .network-item {
     border-bottom: 1px solid var(--border);
   }
@@ -751,8 +1068,73 @@ const pathFor = (url: string) => {
     background: var(--bg-hover);
   }
 
+  .network-item[open] .twisty {
+    transform: rotate(90deg);
+  }
+
   .network-details {
     border-top: 1px solid var(--border);
+  }
+
+  .twisty {
+    display: inline-block;
+    width: 14px;
+    color: var(--text-dim);
+    transition: transform 120ms ease;
+  }
+
+  .source {
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .source.limited {
+    color: var(--yellow);
+  }
+
+  .capture-note {
+    margin: 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--yellow);
+    background: rgba(220, 220, 170, 0.07);
+  }
+
+  .headers-grid {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.34fr) minmax(0, 1fr);
+  }
+
+  .headers-grid h3 {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-hover);
+    color: var(--text-dim);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .headers-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    border-top: 1px solid var(--border);
+  }
+
+  .headers-row span,
+  .headers-row code {
+    min-width: 0;
+    padding: 7px 10px;
+    overflow-wrap: anywhere;
+  }
+
+  .headers-row span {
+    color: var(--text-dim);
+    border-right: 1px solid var(--border);
   }
 
   .header-row {
@@ -781,13 +1163,22 @@ const pathFor = (url: string) => {
   }
 
   .method.put,
-  .status.redirect {
+  .status.redirect,
+  .status.warn {
     color: var(--yellow);
   }
 
   .method.delete,
   .status.error {
     color: var(--red);
+  }
+
+  .status.neutral {
+    color: var(--text-dim);
+  }
+
+  .method.unknown {
+    color: var(--text-dim);
   }
 
   .path {
@@ -797,15 +1188,38 @@ const pathFor = (url: string) => {
   }
 
   .log-row {
-    grid-template-columns: 56px minmax(0, 1fr);
-    align-items: start;
     font-family: "SF Mono", Monaco, monospace;
+  }
+
+  .log-row summary {
+    display: grid;
+    grid-template-columns: 64px minmax(180px, 1fr) minmax(140px, 0.6fr) 96px;
+    align-items: start;
+    gap: 8px;
+    background: var(--bg);
   }
 
   .log-row span {
     color: var(--text-dim);
     font-size: 9px;
     text-transform: uppercase;
+  }
+
+  .log-row strong,
+  .log-row em,
+  .log-row time {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .log-row strong {
+    font-weight: 400;
+  }
+
+  .log-row em,
+  .log-row time {
+    color: var(--text-dim);
+    font-style: normal;
   }
 
   .log-row.warn {
@@ -949,7 +1363,7 @@ const pathFor = (url: string) => {
   }
 
   .asset-table {
-    grid-template-columns: 110px minmax(0, 1fr);
+    grid-template-columns: 110px minmax(0, 1fr) 90px;
   }
 
   .resource-table {
@@ -987,6 +1401,35 @@ const pathFor = (url: string) => {
   .resource-row span:first-child {
     color: var(--text-dim);
     border-right: 1px solid var(--border);
+  }
+
+  .application-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    min-height: 100%;
+  }
+
+  .app-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    border-right: 1px solid var(--border);
+    background: var(--bg-light);
+  }
+
+  .app-tree strong {
+    margin-bottom: 6px;
+    color: var(--text);
+    font-size: 11px;
+  }
+
+  .app-tree span {
+    color: var(--text-dim);
+  }
+
+  .application-content {
+    min-width: 0;
   }
 
   .table-header {
@@ -1105,6 +1548,14 @@ const pathFor = (url: string) => {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .issue-row {
+      grid-template-columns: 58px minmax(0, 1fr);
+    }
+
+    .issue-row em {
+      grid-column: 2;
+    }
+
     .row {
       grid-template-columns: 56px 44px minmax(120px, 1fr);
     }
@@ -1120,31 +1571,38 @@ const pathFor = (url: string) => {
     .privacy-detail-table,
     .privacy-detail-row,
     .asset-table,
-    .asset-row {
+    .asset-row,
+    .headers-grid,
+    .headers-row {
       grid-template-columns: minmax(110px, 0.4fr) minmax(0, 1fr);
+    }
+
+    .log-row summary {
+      grid-template-columns: 54px minmax(0, 1fr);
+    }
+
+    .log-row summary em,
+    .log-row summary time {
+      grid-column: 2;
+    }
+
+    .application-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .app-tree {
+      border-right: 0;
+      border-bottom: 1px solid var(--border);
     }
 
     .status-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .resource-table,
-    .resource-row {
-      grid-template-columns: 80px minmax(0, 1fr);
-    }
-
-    .resource-row span:last-child {
-      display: none;
-    }
-
-    .extensions-table,
-    .extension-row {
-      grid-template-columns: minmax(180px, 1fr) 80px 78px;
-    }
-
-    .extension-row span:nth-child(4),
-    .extension-row span:nth-child(5) {
-      display: none;
+    .network-panel,
+    .resources-panel,
+    .environment-panel {
+      overflow-x: auto;
     }
   }
 </style>

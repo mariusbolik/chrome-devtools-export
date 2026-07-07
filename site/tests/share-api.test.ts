@@ -150,6 +150,39 @@ describe("share API", () => {
     expect(stored?.body).toContain("api_key=secret");
   });
 
+  test("handleCreateShare parses browser details from captured page user agent before upload user agent", async () => {
+    const bucket = new MockR2Bucket();
+    const request = new Request("https://devtoolsexport.com/api/share", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0 Firefox/140.0",
+      },
+      body: JSON.stringify(
+        createSnapshot({
+          id: "Temp234x",
+          url: "https://example.com/app",
+          environment: {
+            userAgent:
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+          },
+        })
+      ),
+    });
+
+    const response = await handleCreateShare(request, makeEnv(bucket), {
+      now: new Date("2026-07-06T12:00:00.000Z"),
+      idFactory: () => "AbC234xy",
+    });
+
+    expect(response.status).toBe(201);
+    const stored = JSON.parse(bucket.objects.get("snapshots/AbC234xy.json")?.body ?? "{}") as {
+      environment?: { userAgent?: string; browser?: { browser?: { name?: string } } };
+    };
+    expect(stored.environment?.userAgent).toContain("Chrome/126.0.0.0");
+    expect(stored.environment?.browser?.browser?.name).toBe("Chrome");
+  });
+
   test("handleCreateShare can preserve screenshots without preserving other sensitive fields", async () => {
     const bucket = new MockR2Bucket();
     const request = new Request("https://devtoolsexport.com/api/share", {

@@ -5,6 +5,7 @@ import type {
   EnvironmentSnapshot,
   InstalledExtensionSnapshot,
   NetworkRequestSnapshot,
+  PageDiagnosticsSnapshot,
   ShareSnapshot,
   StorageSnapshot,
 } from "../shared/snapshot";
@@ -13,6 +14,10 @@ export interface PageResourceCapture {
   name: string;
   initiatorType: string;
   duration: number;
+  transferSize?: number;
+  encodedBodySize?: number;
+  decodedBodySize?: number;
+  responseStatus?: number;
 }
 
 export interface PageAssetCapture {
@@ -30,7 +35,9 @@ export interface PageCapture {
   screen?: Record<string, unknown>;
   storage: StorageSnapshot;
   resources: PageResourceCapture[];
+  pageDiagnostics?: PageDiagnosticsSnapshot;
   assets: PageAssetCapture;
+  captureNotices?: ShareSnapshot["captureNotices"];
 }
 
 export interface DirectSnapshotInputOptions {
@@ -56,7 +63,9 @@ export function buildDirectSnapshotInput(options: DirectSnapshotInputOptions): C
       screen: options.page.screen,
       viewport: options.page.viewport,
     },
+    pageDiagnostics: options.page.pageDiagnostics,
     installedExtensions: options.installedExtensions,
+    captureNotices: options.page.captureNotices,
     network: options.page.resources.map(resourceToNetworkRequest),
     console: options.consoleLogs.map((entry) => ({ ...entry, source: entry.source ?? "content" })),
     storage: options.page.storage,
@@ -71,13 +80,18 @@ export function buildDirectSnapshotInput(options: DirectSnapshotInputOptions): C
 function resourceToNetworkRequest(resource: PageResourceCapture, index: number): NetworkRequestSnapshot {
   return {
     id: index + 1,
-    method: "GET",
+    method: "UNKNOWN",
     url: resource.name,
-    status: 0,
+    status: typeof resource.responseStatus === "number" ? resource.responseStatus : 0,
     time: Math.round(resource.duration || 0),
+    source: "resource-timing",
+    initiatorType: resource.initiatorType,
     requestHeaders: {},
     responseHeaders: {},
     requestBody: null,
     responseBody: null,
+    ...(typeof resource.transferSize === "number" ? { transferSize: resource.transferSize } : {}),
+    ...(typeof resource.encodedBodySize === "number" ? { encodedBodySize: resource.encodedBodySize } : {}),
+    ...(typeof resource.decodedBodySize === "number" ? { decodedBodySize: resource.decodedBodySize } : {}),
   };
 }

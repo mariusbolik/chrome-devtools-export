@@ -75,6 +75,97 @@ describe("shared snapshot utilities", () => {
     expect(result.redactions.length).toBeGreaterThanOrEqual(12);
   });
 
+  test("redactSnapshot redacts duplicated URL fields, console metadata, and fingerprint-heavy details by default", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com/app",
+      environment: {
+        cloudflare: {
+          country: "DE",
+          colo: "FRA",
+          city: "Berlin",
+          region: "Berlin",
+          postalCode: "10115",
+          latitude: "52.5200",
+          longitude: "13.4050",
+          timezone: "Europe/Berlin",
+        },
+      },
+      installedExtensions: [
+        {
+          id: "abcdefghijklmnopabcdefghijklmnop",
+          name: "React DevTools",
+          version: "5.0.0",
+          enabled: true,
+          type: "extension",
+          installType: "normal",
+          permissions: ["storage", "tabs"],
+          hostPermissions: ["https://secret.example.com/*"],
+        },
+      ],
+      console: [
+        {
+          id: 1,
+          type: "error",
+          text: "Failed to load https://api.example.com/user?token=console-token",
+          timestamp: 1,
+          source: "content",
+          frameUrl: "https://app.example.com/page?session=frame-secret",
+          args: [{ requestUrl: "https://api.example.com/users?api_key=args-secret", visible: "keep me" }],
+          stackTrace: {
+            callFrames: [
+              { url: "https://cdn.example.com/app.js?jwt=stack-secret", functionName: "load" },
+            ],
+          },
+        },
+      ],
+      cdp: {
+        pageAssets: {
+          images: ["https://cdn.example.com/logo.png?token=asset-secret"],
+          scripts: ["https://cdn.example.com/app.js?api_key=script-secret"],
+          stylesheets: ["https://cdn.example.com/app.css?sid=style-secret"],
+        },
+        pageResources: [
+          {
+            name: "https://api.example.com/users?access_token=resource-secret",
+            initiatorType: "fetch",
+            duration: 42,
+          },
+        ],
+      },
+    });
+
+    const result = redactSnapshot(snapshot);
+    const serialized = JSON.stringify(result.snapshot);
+
+    expect(serialized).not.toContain("console-token");
+    expect(serialized).not.toContain("frame-secret");
+    expect(serialized).not.toContain("args-secret");
+    expect(serialized).not.toContain("stack-secret");
+    expect(serialized).not.toContain("asset-secret");
+    expect(serialized).not.toContain("script-secret");
+    expect(serialized).not.toContain("style-secret");
+    expect(serialized).not.toContain("resource-secret");
+    expect(serialized).not.toContain("abcdefghijklmnopabcdefghijklmnop");
+    expect(serialized).not.toContain("5.0.0");
+    expect(serialized).not.toContain("https://secret.example.com/*");
+    expect(serialized).not.toContain("Berlin");
+    expect(serialized).not.toContain("10115");
+    expect(serialized).not.toContain("52.5200");
+    expect(serialized).not.toContain("13.4050");
+    expect(result.snapshot.environment.cloudflare).toEqual({ country: "DE", colo: "FRA" });
+    expect(result.snapshot.installedExtensions).toEqual([
+      {
+        name: "React DevTools",
+        enabled: true,
+        type: "extension",
+      },
+    ]);
+    expect(result.snapshot.console[0].args).toEqual([
+      { requestUrl: "https://api.example.com/users?api_key=%5BREDACTED%5D", visible: "keep me" },
+    ]);
+  });
+
   test("redactSnapshot preserves useful structured body content while redacting sensitive values", () => {
     const snapshot = createSnapshot({
       id: "AbC234xy",

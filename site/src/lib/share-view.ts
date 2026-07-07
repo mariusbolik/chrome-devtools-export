@@ -1,4 +1,4 @@
-import { REDACTED_VALUE, type CdpSnapshot, type ShareSnapshot, type StorageSnapshot } from "../../../shared/snapshot";
+import { REDACTED_VALUE, type CdpSnapshot, type NetworkRequestSnapshot, type ShareSnapshot, type StorageSnapshot } from "../../../shared/snapshot";
 
 export type ViewValueType = "array" | "boolean" | "null" | "number" | "object" | "string";
 
@@ -28,6 +28,91 @@ export interface StatusViewRow {
 
 export type PrivacyViewRow = StatusViewRow;
 
+export type SharePanelTarget =
+  | "application"
+  | "console"
+  | "elements"
+  | "environment"
+  | "network"
+  | "page"
+  | "performance"
+  | "resources"
+  | "screenshot"
+  | "sources"
+  | "storage"
+  | "triage";
+
+export interface CaptureFidelityViewModel {
+  mode: "devtools" | "empty" | "mixed" | "resource-timing";
+  label: string;
+  detail: string;
+  tone: StatusViewRow["tone"];
+}
+
+export interface IssueViewRow {
+  severity: "error" | "info" | "warn";
+  title: string;
+  detail: string;
+  targetTab: SharePanelTarget;
+}
+
+export interface IssuesViewModel {
+  items: IssueViewRow[];
+  deviceRows: DetailViewRow[];
+}
+
+export interface NetworkViewRow {
+  id: number;
+  name: string;
+  url: string;
+  safeUrl: string;
+  method: string;
+  statusLabel: string;
+  statusTone: StatusViewRow["tone"];
+  type: string;
+  sourceLabel: string;
+  captureNote: string | null;
+  size: string;
+  time: string;
+  hasHeaders: boolean;
+  hasPayload: boolean;
+  hasResponse: boolean;
+}
+
+export interface NetworkHeaderViewRow {
+  name: string;
+  value: string;
+}
+
+export interface NetworkDetailViewRow extends NetworkViewRow {
+  requestHeaders: NetworkHeaderViewRow[];
+  responseHeaders: NetworkHeaderViewRow[];
+  requestBody: string | null;
+  responseBody: string | null;
+}
+
+export interface NetworkViewModel {
+  rows: NetworkViewRow[];
+  details: NetworkDetailViewRow[];
+}
+
+export interface ConsoleViewRow {
+  id: number;
+  type: string;
+  severity: "error" | "info" | "warn";
+  message: string;
+  source: string;
+  frame: string;
+  timestamp: string;
+  isTop: boolean | null;
+}
+
+export interface ConsoleViewModel {
+  rows: ConsoleViewRow[];
+  errorCount: number;
+  warningCount: number;
+}
+
 export interface CdpAssetViewRow {
   type: "Image" | "Script" | "Stylesheet";
   url: string;
@@ -41,6 +126,8 @@ export interface CdpResourceViewRow {
   duration: string;
   url: string;
   safeUrl: string;
+  size?: string;
+  statusLabel?: string;
 }
 
 export interface CdpViewModel {
@@ -84,6 +171,28 @@ export interface EnvironmentViewModel {
   installedExtensions: InstalledExtensionViewRow[];
 }
 
+export interface SourceTreeSection {
+  origin: string;
+  rows: Array<{
+    type: string;
+    path: string;
+    duration: string;
+    safeUrl: string;
+  }>;
+}
+
+export interface SourcesViewModel {
+  sections: SourceTreeSection[];
+}
+
+export interface PerformanceViewModel {
+  documentRows: DetailViewRow[];
+  navigationRows: DetailViewRow[];
+  paintRows: DetailViewRow[];
+  cdpRows: DetailViewRow[];
+  slowResources: CdpResourceViewRow[];
+}
+
 export interface ShareViewModel {
   id: string;
   seoTitle: string;
@@ -111,11 +220,17 @@ export interface ShareViewModel {
     redactions: number;
     truncations: number;
   };
+  captureFidelity: CaptureFidelityViewModel;
+  issues: IssuesViewModel;
+  network: NetworkViewModel;
+  console: ConsoleViewModel;
   storage: {
     sections: StorageViewSection[];
     totalRows: number;
   };
   cdp: CdpViewModel;
+  sources: SourcesViewModel;
+  performance: PerformanceViewModel;
   environment: EnvironmentViewModel;
   privacy: {
     summaryRows: PrivacyViewRow[];
@@ -139,6 +254,11 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
   const city = String(snapshot.environment.cloudflare?.city ?? "");
   const storageSections = buildStorageSections(snapshot.storage);
   const cdp = buildCdpViewModel(snapshot.cdp);
+  const environment = buildEnvironmentViewModel(snapshot);
+  const network = buildNetworkViewModel(snapshot.network);
+  const consoleModel = buildConsoleViewModel(snapshot.console);
+  const captureFidelity = buildCaptureFidelity(snapshot.network);
+  const performance = buildPerformanceViewModel(snapshot, cdp);
 
   return {
     id: snapshot.id,
@@ -167,12 +287,18 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
       redactions: snapshot.redactions.length,
       truncations: snapshot.truncations.length,
     },
+    captureFidelity,
+    issues: buildIssuesViewModel(snapshot, cdp, environment, captureFidelity),
+    network,
+    console: consoleModel,
     storage: {
       sections: storageSections,
       totalRows: storageSections.reduce((total, section) => total + section.rows.length, 0),
     },
     cdp,
-    environment: buildEnvironmentViewModel(snapshot),
+    sources: buildSourcesViewModel(cdp),
+    performance,
+    environment,
     privacy: buildPrivacyViewModel(snapshot),
   };
 }
@@ -224,6 +350,294 @@ function groupedNoticeRows(notices: ShareSnapshot["redactions"]): PrivacyViewRow
     value: String(count),
     tone: "warn" as const,
   }));
+}
+
+function buildCaptureFidelity(network: NetworkRequestSnapshot[]): CaptureFidelityViewModel {
+  if (network.length === 0) {
+    return {
+      mode: "empty",
+      label: "No Network Capture",
+      detail: "No network records were included in this snapshot.",
+      tone: "neutral",
+    };
+  }
+
+  const resourceTimingCount = network.filter(isResourceTimingRequest).length;
+  const devtoolsCount = network.length - resourceTimingCount;
+
+  if (resourceTimingCount > 0 && devtoolsCount > 0) {
+    return {
+      mode: "mixed",
+      label: "Mixed Capture",
+      detail: "Includes DevTools network records and resource timing records with limited HTTP details.",
+      tone: "warn",
+    };
+  }
+
+  if (resourceTimingCount > 0) {
+    return {
+      mode: "resource-timing",
+      label: "Resource Timing Capture",
+      detail: "Captured from the active tab. HTTP status, headers, payloads, and response bodies may be unavailable.",
+      tone: "warn",
+    };
+  }
+
+  return {
+    mode: "devtools",
+    label: "DevTools Network Capture",
+    detail: "Captured from the DevTools panel with request and response metadata when Chrome exposed it.",
+    tone: "ok",
+  };
+}
+
+function buildIssuesViewModel(
+  snapshot: ShareSnapshot,
+  cdp: CdpViewModel,
+  environment: EnvironmentViewModel,
+  captureFidelity: CaptureFidelityViewModel
+): IssuesViewModel {
+  const items: IssueViewRow[] = [];
+  const consoleError = snapshot.console.find((entry) => entry.type === "error");
+  const failedRequest = snapshot.network.find((request) => request.status >= 400);
+  const slowRequest = [...snapshot.network]
+    .filter((request) => request.time >= 1000)
+    .sort((a, b) => b.time - a.time)[0];
+
+  if (consoleError) {
+    items.push({
+      severity: "error",
+      title: "Console error",
+      detail: firstLine(consoleError.text),
+      targetTab: "console",
+    });
+  }
+
+  if (failedRequest) {
+    items.push({
+      severity: failedRequest.status >= 500 ? "error" : "warn",
+      title: "Failed request",
+      detail: `${failedRequest.status} ${failedRequest.method} ${pathForUrl(failedRequest.url)} in ${formatMilliseconds(failedRequest.time)}`,
+      targetTab: "network",
+    });
+  }
+
+  if (slowRequest) {
+    items.push({
+      severity: "warn",
+      title: "Slow resource",
+      detail: `${pathForUrl(slowRequest.url)} took ${formatMilliseconds(slowRequest.time)}`,
+      targetTab: "network",
+    });
+  }
+
+  if (captureFidelity.mode === "resource-timing") {
+    items.push({
+      severity: "warn",
+      title: "Limited network evidence",
+      detail: "Popup capture only includes Resource Timing data; HTTP status, headers, payloads, and response bodies may be unavailable.",
+      targetTab: "network",
+    });
+  }
+
+  if (cdp.errors.length > 0) {
+    items.push({
+      severity: "warn",
+      title: "CDP capture issue",
+      detail: firstLine(cdp.errors[0]),
+      targetTab: "environment",
+    });
+  }
+
+  for (const notice of (snapshot.captureNotices ?? []).slice(0, 3)) {
+    items.push({
+      severity: "warn",
+      title: "Capture limitation",
+      detail: notice.reason,
+      targetTab: "environment",
+    });
+  }
+
+  return {
+    items,
+    deviceRows: buildDeviceSummaryRows(snapshot, environment),
+  };
+}
+
+function buildDeviceSummaryRows(snapshot: ShareSnapshot, environment: EnvironmentViewModel): DetailViewRow[] {
+  const browserRows = environment.sections.find((section) => section.id === "browser")?.rows ?? [];
+  const deviceRows = environment.sections.find((section) => section.id === "device")?.rows ?? [];
+  const locationRows = environment.sections.find((section) => section.id === "location")?.rows ?? [];
+
+  return compactRows([
+    browserRows.find((row) => row.label === "Browser") ?? null,
+    browserRows.find((row) => row.label === "OS") ?? null,
+    deviceRows.find((row) => row.label === "Viewport") ?? null,
+    deviceRows.find((row) => row.label === "Screen") ?? null,
+    detailRow("Timezone", snapshot.environment.timezone || readString(snapshot.environment.cloudflare, ["timezone"])),
+    locationRows.find((row) => row.label === "Location") ?? null,
+    deviceRows.find((row) => row.label === "Hardware Threads") ?? null,
+    deviceRows.find((row) => row.label === "Memory") ?? null,
+  ]);
+}
+
+function buildNetworkViewModel(network: NetworkRequestSnapshot[]): NetworkViewModel {
+  const details = network.map(buildNetworkDetailRow);
+  return {
+    rows: details.map(({ requestHeaders: _requestHeaders, responseHeaders: _responseHeaders, requestBody: _requestBody, responseBody: _responseBody, ...row }) => row),
+    details,
+  };
+}
+
+function buildNetworkDetailRow(request: NetworkRequestSnapshot): NetworkDetailViewRow {
+  const hasRequestHeaders = Object.keys(request.requestHeaders).length > 0;
+  const hasResponseHeaders = Object.keys(request.responseHeaders).length > 0;
+  const isResourceTiming = isResourceTimingRequest(request);
+
+  return {
+    id: request.id,
+    name: pathForUrl(request.url),
+    url: request.url,
+    safeUrl: safeHttpUrl(request.url),
+    method: isResourceTiming ? "UNKNOWN" : request.method,
+    statusLabel: request.status > 0 ? String(request.status) : isResourceTiming ? "Not captured" : "Unknown",
+    statusTone: networkStatusTone(request.status),
+    type: request.initiatorType || "unknown",
+    sourceLabel: isResourceTiming ? "Resource Timing" : "DevTools",
+    captureNote: isResourceTiming
+      ? "HTTP status, headers, payload, and response body were not available from popup capture."
+      : null,
+    size: formatNetworkSize(request),
+    time: formatMilliseconds(request.time),
+    hasHeaders: hasRequestHeaders || hasResponseHeaders,
+    hasPayload: Boolean(request.requestBody),
+    hasResponse: Boolean(request.responseBody),
+    requestHeaders: headerRows(request.requestHeaders),
+    responseHeaders: headerRows(request.responseHeaders),
+    requestBody: request.requestBody,
+    responseBody: request.responseBody,
+  };
+}
+
+function buildConsoleViewModel(logs: ShareSnapshot["console"]): ConsoleViewModel {
+  const rows = [...logs]
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .map((entry): ConsoleViewRow => ({
+      id: entry.id,
+      type: entry.type,
+      severity: entry.type === "error" ? "error" : entry.type === "warn" ? "warn" : "info",
+      message: firstLine(entry.text),
+      source: entry.source,
+      frame: entry.frameUrl || "unknown frame",
+      timestamp: formatTimestamp(entry.timestamp),
+      isTop: typeof entry.isTop === "boolean" ? entry.isTop : null,
+    }));
+
+  return {
+    rows,
+    errorCount: logs.filter((entry) => entry.type === "error").length,
+    warningCount: logs.filter((entry) => entry.type === "warn").length,
+  };
+}
+
+function buildSourcesViewModel(cdp: CdpViewModel): SourcesViewModel {
+  const groups = new Map<string, SourceTreeSection["rows"]>();
+  const add = (type: string, url: string, safeUrl: string, duration = "unknown") => {
+    const origin = originForUrl(url);
+    const rows = groups.get(origin) ?? [];
+    rows.push({ type, path: pathForUrl(url), duration, safeUrl });
+    groups.set(origin, rows);
+  };
+
+  for (const asset of cdp.assets) add(asset.type, asset.url, asset.safeUrl);
+  for (const resource of cdp.resources) add(resource.initiatorType, resource.url, resource.safeUrl, resource.duration);
+
+  return {
+    sections: [...groups.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([origin, rows]) => ({
+        origin,
+        rows: rows.sort((a, b) => a.path.localeCompare(b.path)),
+      })),
+  };
+}
+
+function buildPerformanceViewModel(snapshot: ShareSnapshot, cdp: CdpViewModel): PerformanceViewModel {
+  const diagnostics = snapshot.pageDiagnostics;
+  const document = diagnostics?.document;
+  const navigation = diagnostics?.navigation;
+
+  return {
+    documentRows: compactRows([
+      detailRow("Ready State", document?.readyState),
+      detailRow("Visibility", document?.visibilityState),
+      detailRow("Online", typeof document?.online === "boolean" ? String(document.online) : undefined, "boolean"),
+    ]),
+    navigationRows: compactRows([
+      detailRow("Navigation Type", navigation?.type),
+      timingRow("Navigation Duration", navigation?.duration),
+      timingRow("Response End", navigation?.responseEnd),
+      timingRow("DOMContentLoaded", navigation?.domContentLoaded),
+      timingRow("Load Event", navigation?.loadEvent),
+    ]),
+    paintRows: (diagnostics?.paints ?? [])
+      .filter((paint) => typeof paint.name === "string" && typeof paint.startTime === "number")
+      .map((paint) => ({ label: paint.name, value: formatMilliseconds(paint.startTime), valueType: "number" as const })),
+    cdpRows: cdp.performanceRows,
+    slowResources: cdp.resources.filter((resource) => durationNumber(resource.duration) >= 1000).slice(0, 8),
+  };
+}
+
+function isResourceTimingRequest(request: NetworkRequestSnapshot): boolean {
+  if (request.source === "resource-timing") return true;
+  if (request.source === "devtools") return false;
+  return (
+    request.status === 0 &&
+    Object.keys(request.requestHeaders).length === 0 &&
+    Object.keys(request.responseHeaders).length === 0 &&
+    request.requestBody === null &&
+    request.responseBody === null
+  );
+}
+
+function networkStatusTone(status: number): StatusViewRow["tone"] {
+  if (status >= 500) return "error";
+  if (status >= 400) return "warn";
+  if (status >= 300) return "neutral";
+  if (status > 0) return "ok";
+  return "neutral";
+}
+
+function formatNetworkSize(request: NetworkRequestSnapshot): string {
+  if (typeof request.transferSize === "number" && typeof request.decodedBodySize === "number") {
+    return `${formatBytes(request.transferSize)} transferred / ${formatBytes(request.decodedBodySize)} decoded`;
+  }
+  if (typeof request.transferSize === "number") return `${formatBytes(request.transferSize)} transferred`;
+  if (typeof request.decodedBodySize === "number") return `${formatBytes(request.decodedBodySize)} decoded`;
+  if (request.responseBody) return formatBytes(byteLength(request.responseBody));
+  if (request.requestBody) return formatBytes(byteLength(request.requestBody));
+  return "unknown";
+}
+
+function headerRows(headers: Record<string, string>): NetworkHeaderViewRow[] {
+  return Object.entries(headers)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, value]) => ({ name, value }));
+}
+
+function timingRow(label: string, value: unknown): DetailViewRow | null {
+  return typeof value === "number" && Number.isFinite(value)
+    ? { label, value: formatMilliseconds(value), valueType: "number" }
+    : null;
+}
+
+function durationNumber(value: string): number {
+  const number = Number.parseInt(value, 10);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function firstLine(value: string): string {
+  return value.split(/\r?\n/)[0] || value;
 }
 
 function buildStorageSections(storage: StorageSnapshot): StorageViewSection[] {
@@ -379,13 +793,22 @@ function buildResourceRows(pageResources: unknown): CdpResourceViewRow[] {
       const row = asRecord(resource);
       if (!row || typeof row.name !== "string") return null;
       const duration = typeof row.duration === "number" && Number.isFinite(row.duration) ? `${Math.round(row.duration)}ms` : "unknown";
-      return {
+      const result: CdpResourceViewRow = {
         initiatorType: typeof row.initiatorType === "string" && row.initiatorType ? row.initiatorType : "unknown",
         path: pathForUrl(row.name),
         duration,
         url: row.name,
         safeUrl: safeHttpUrl(row.name),
       };
+      if (typeof row.transferSize === "number" && typeof row.decodedBodySize === "number") {
+        result.size = `${formatBytes(row.transferSize)} transferred / ${formatBytes(row.decodedBodySize)} decoded`;
+      } else if (typeof row.transferSize === "number") {
+        result.size = `${formatBytes(row.transferSize)} transferred`;
+      }
+      if (typeof row.responseStatus === "number") {
+        result.statusLabel = row.responseStatus > 0 ? String(row.responseStatus) : "Unknown";
+      }
+      return result;
     })
     .filter((row): row is CdpResourceViewRow => row !== null);
 }
@@ -440,14 +863,14 @@ function buildEnvironmentViewModel(snapshot: ShareSnapshot): EnvironmentViewMode
       },
     ],
     installedExtensions: snapshot.installedExtensions.map((extension) => ({
-      id: extension.id,
+      id: extension.id || "Redacted",
       name: extension.name,
-      version: extension.version,
+      version: extension.version || "Redacted",
       enabled: extension.enabled ? "Enabled" : "Disabled",
       type: extension.type || "unknown",
-      installType: extension.installType || "unknown",
-      permissions: pluralize(extension.permissions?.length ?? 0, "permission"),
-      hostPermissions: pluralize(extension.hostPermissions?.length ?? 0, "host permission"),
+      installType: extension.installType || "Redacted",
+      permissions: extension.permissions ? pluralize(extension.permissions.length, "permission") : "Redacted",
+      hostPermissions: extension.hostPermissions ? pluralize(extension.hostPermissions.length, "host permission") : "Redacted",
     })),
   };
 }
@@ -479,12 +902,42 @@ function formatScreen(screenValue: unknown): string | undefined {
   return `${screen.width} x ${screen.height}${colorDepth}`;
 }
 
+function formatMilliseconds(value: number): string {
+  return `${Math.round(value)}ms`;
+}
+
+function formatTimestamp(value: number): string {
+  if (!Number.isFinite(value)) return "unknown";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleTimeString("en-US", { hour12: false });
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "unknown";
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
+  const kib = bytes / 1024;
+  if (kib < 1024) return `${Math.round(kib)} kB`;
+  return `${(kib / 1024).toFixed(1)} MB`;
+}
+
+function byteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
 function pathForUrl(urlValue: string): string {
   try {
     const parsed = new URL(urlValue);
     return `${parsed.pathname}${parsed.search}`;
   } catch {
     return urlValue;
+  }
+}
+
+function originForUrl(urlValue: string): string {
+  try {
+    return new URL(urlValue).origin;
+  } catch {
+    return "unknown origin";
   }
 }
 

@@ -48,14 +48,8 @@ async function collectPageSnapshot() {
       cookies: readCookies(),
       indexedDB: await readIndexedDBMetadata(),
     },
-    resources: performance.getEntriesByType("resource").map((entry) => {
-      const resource = entry as PerformanceResourceTiming;
-      return {
-        name: resource.name,
-        initiatorType: resource.initiatorType,
-        duration: resource.duration,
-      };
-    }),
+    resources: readResourceTimings(),
+    pageDiagnostics: readPageDiagnostics(),
     assets: {
       images: unique(Array.from(document.images).map((image) => image.currentSrc || image.src).filter(Boolean)),
       scripts: unique(Array.from(document.scripts).map((script) => script.src).filter(Boolean)),
@@ -65,6 +59,49 @@ async function collectPageSnapshot() {
           .filter(Boolean)
       ),
     },
+  };
+}
+
+function readResourceTimings() {
+  return performance.getEntriesByType("resource").map((entry) => {
+    const resource = entry as PerformanceResourceTiming;
+    return {
+      name: resource.name,
+      initiatorType: resource.initiatorType,
+      duration: resource.duration,
+      transferSize: resource.transferSize,
+      encodedBodySize: resource.encodedBodySize,
+      decodedBodySize: resource.decodedBodySize,
+      responseStatus: resource.responseStatus,
+    };
+  });
+}
+
+function readPageDiagnostics() {
+  return {
+    document: {
+      readyState: document.readyState,
+      visibilityState: document.visibilityState,
+      online: navigator.onLine,
+    },
+    navigation: readNavigationTiming(),
+    paints: performance.getEntriesByType("paint").map((entry) => ({
+      name: entry.name,
+      startTime: entry.startTime,
+    })),
+  };
+}
+
+function readNavigationTiming() {
+  const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+  if (!navigation) return undefined;
+
+  return {
+    type: navigation.type,
+    duration: navigation.duration,
+    domContentLoaded: navigation.domContentLoadedEventEnd,
+    loadEvent: navigation.loadEventEnd,
+    responseEnd: navigation.responseEnd,
   };
 }
 

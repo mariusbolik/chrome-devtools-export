@@ -134,7 +134,7 @@ async function collectPageCapture(tabId: number): Promise<PageCapture> {
     const response = await chrome.tabs.sendMessage(tabId, { type: "collect-page-snapshot" }) as PageCapture | { error?: string };
     if ("error" in response && response.error) throw new Error(response.error);
     return response as PageCapture;
-  } catch {
+  } catch (error) {
     const tab = await chrome.tabs.get(tabId);
     if (!tab.url || !/^https?:\/\//.test(tab.url)) {
       throw new Error("This page cannot be captured. Try an http or https tab.");
@@ -156,6 +156,20 @@ async function collectPageCapture(tabId: number): Promise<PageCapture> {
         scripts: [],
         stylesheets: [],
       },
+      captureNotices: [
+        {
+          path: "page",
+          reason: error instanceof Error ? `Content script capture failed: ${error.message}` : "Content script capture failed; uploaded tab metadata only",
+        },
+        {
+          path: "storage",
+          reason: "Storage was not available because page capture fell back to tab metadata",
+        },
+        {
+          path: "network",
+          reason: "Resource timing was not available because page capture fell back to tab metadata",
+        },
+      ],
     };
   }
 }

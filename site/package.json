@@ -8,6 +8,7 @@
     "build": "astro build",
     "check": "astro check",
     "test": "bun test",
+    "test:browser": "playwright test",
     "deploy": "wrangler deploy",
     "deploy:dry-run": "wrangler deploy --dry-run"
   },
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
     "@cloudflare/workers-types": "4.20251223.0",
+    "@playwright/test": "^1.61.1",
     "typescript": "^5.9.3",
     "wrangler": "4.107.0"
   }

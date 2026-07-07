@@ -77,7 +77,7 @@ export async function shareDevtoolsSnapshot(options: ShareSnapshotOptions): Prom
     collectPageMetadata(),
     collectStorageSnapshot(),
     collectInstalledExtensions(),
-    captureCdpSnapshot(options.inspectedTabId),
+    captureCdpSnapshot(options.inspectedTabId, { includeScreenshot: options.includeScreenshot }),
   ]);
 
   const prepared = prepareSnapshotForUpload(
