@@ -40,6 +40,15 @@ describe("landing page", () => {
     expect(pageSource).toContain("View on GitHub");
   });
 
+  test("renders icons in the primary install and GitHub buttons", () => {
+    expect(pageSource.match(/class="button-icon/g)?.length).toBe(2);
+    expect(pageSource).toContain('class="button-icon chrome-icon"');
+    expect(pageSource).toContain("<title>chrome</title>");
+    expect(pageSource).toContain('class="button-icon github-icon"');
+    expect(pageSource).toContain("<title>github</title>");
+    expect(pageSource).toContain(".button.primary .button-icon");
+  });
+
   test("renders required footer attribution links", () => {
     expect(pageSource).toContain("Eyloo GmbH");
     expect(pageSource).toContain("https://x.com/mariusbolik");
@@ -89,10 +98,12 @@ describe("landing page", () => {
     expect(pageSource).toContain("[data-proof-dot]");
     expect(pageSource).toContain("[data-proof-prev]");
     expect(pageSource).toContain("[data-proof-next]");
-    expect(pageSource).toContain("grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.5fr);");
-    expect(pageSource).toContain("right: calc(25% + 44px);");
+    expect(pageSource).toContain("grid-template-columns: 1fr;");
     expect(pageSource).toContain("right: 12px;");
+    expect(pageSource).toContain("max-width: 780px;");
     expect(pageSource).toContain(".proof-slide[hidden]");
+    expect(pageSource).not.toContain("grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.5fr);");
+    expect(pageSource).not.toContain("right: calc(25% + 44px);");
     expect(pageSource).not.toContain('class="proof-slide-nav"');
     expect(pageSource).not.toContain('class="proof-tab');
     expect(pageSource).not.toContain('class="proof-track"');
