@@ -27,6 +27,13 @@ export interface StatusViewRow {
   tone: "error" | "neutral" | "ok" | "warn";
 }
 
+export interface SummaryCardViewModel {
+  label: string;
+  value: string;
+  detail: string;
+  tone: StatusViewRow["tone"];
+}
+
 export type PrivacyViewRow = StatusViewRow;
 
 export type SharePanelTarget =
@@ -106,6 +113,7 @@ export interface ConsoleViewRow {
   severity: "error" | "info" | "warn";
   anchorId: string;
   message: string;
+  text: string;
   source: string;
   frame: string;
   timestamp: string;
@@ -217,6 +225,7 @@ export interface ShareViewModel {
     label: string;
     flagUrl: string | null;
   };
+  summaryCards: SummaryCardViewModel[];
   counts: {
     network: number;
     networkErrors: number;
@@ -269,6 +278,7 @@ const STORAGE_SECTIONS: Array<{ id: keyof StorageSnapshot; label: string }> = [
 export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
   const browserName = readString(snapshot.environment.browser, ["browser", "name"]);
   const browserVersion = readString(snapshot.environment.browser, ["browser", "version"]);
+  const osName = readString(snapshot.environment.browser, ["os", "name"]);
   const country = String(snapshot.environment.cloudflare?.country ?? "unknown").toUpperCase();
   const city = String(snapshot.environment.cloudflare?.city ?? "");
   const storageSections = buildStorageSections(snapshot.storage);
@@ -286,6 +296,28 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
     totalRows: storageSections.reduce((total, section) => total + section.rows.length, 0),
   };
   const privacy = buildPrivacyViewModel(snapshot);
+  const counts = {
+    network: snapshot.network.length,
+    networkErrors: snapshot.network.filter((request) => request.status >= 400).length,
+    console: snapshot.console.length,
+    consoleErrors: snapshot.console.filter((entry) => entry.type === "error").length,
+    storageBuckets: Object.keys(snapshot.storage).length,
+    installedExtensions: snapshot.installedExtensions.length,
+    redactions: snapshot.redactions.length,
+    truncations: snapshot.truncations.length,
+  };
+  const summaryCards = buildSummaryCards(snapshot, {
+    browserName,
+    browserVersion,
+    osName,
+    country,
+    counts,
+    issues,
+    network,
+    console: consoleModel,
+    storage,
+    cdp,
+  });
 
   return {
     id: snapshot.id,
@@ -304,16 +336,8 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
       label: locationLabel,
       flagUrl: country !== "UNKNOWN" ? `${FLAG_BASE}/${country.toLowerCase()}.svg` : null,
     },
-    counts: {
-      network: snapshot.network.length,
-      networkErrors: snapshot.network.filter((request) => request.status >= 400).length,
-      console: snapshot.console.length,
-      consoleErrors: snapshot.console.filter((entry) => entry.type === "error").length,
-      storageBuckets: Object.keys(snapshot.storage).length,
-      installedExtensions: snapshot.installedExtensions.length,
-      redactions: snapshot.redactions.length,
-      truncations: snapshot.truncations.length,
-    },
+    summaryCards,
+    counts,
     aiSummary: buildAiSummary(snapshot, {
       browserLabel,
       locationLabel,
@@ -335,6 +359,75 @@ export function buildShareViewModel(snapshot: ShareSnapshot): ShareViewModel {
     environment,
     privacy,
   };
+}
+
+function buildSummaryCards(
+  snapshot: ShareSnapshot,
+  parts: {
+    browserName: string;
+    browserVersion: string;
+    osName: string;
+    country: string;
+    counts: ShareViewModel["counts"];
+    issues: IssuesViewModel;
+    network: NetworkViewModel;
+    console: ConsoleViewModel;
+    storage: ShareViewModel["storage"];
+    cdp: CdpViewModel;
+  }
+): SummaryCardViewModel[] {
+  const errorIssues = parts.issues.items.filter((issue) => issue.severity === "error").length;
+  const warningIssues = parts.issues.items.filter((issue) => issue.severity === "warn").length;
+  const slowRequests = parts.network.details.filter((request) => durationNumber(request.time) >= 1000).length;
+  const hasHeaders = parts.network.details.some((request) => request.hasHeaders);
+  const hasBodies = parts.network.details.some((request) => request.hasPayload || request.hasResponse);
+  const contextDetail = joinCommaParts(
+    parts.osName,
+    parts.country !== "UNKNOWN" ? parts.country : "",
+    formatCompactViewport(snapshot.environment.viewport)
+  ) || "Unknown device";
+  const evidenceValueParts = [
+    parts.cdp.hasScreenshot ? "Screenshot" : "",
+    parts.cdp.domSnapshot.state === "available" ? "DOM" : "",
+  ].filter(Boolean);
+  const evidenceDetailParts = [
+    parts.storage.totalRows > 0 ? "Storage" : "",
+    hasHeaders ? "headers" : "",
+    hasBodies ? "bodies" : "",
+  ].filter(Boolean);
+
+  return [
+    {
+      label: "Triage",
+      value: pluralize(parts.issues.items.length, "issue"),
+      detail: `${pluralize(errorIssues, "error")}, ${pluralize(warningIssues, "warning")}`,
+      tone: errorIssues > 0 ? "error" : warningIssues > 0 ? "warn" : "ok",
+    },
+    {
+      label: "Network Requests",
+      value: String(parts.counts.network),
+      detail: `${pluralize(parts.counts.networkErrors, "failed", "failed")}, ${pluralize(slowRequests, "slow", "slow")}`,
+      tone: parts.counts.networkErrors > 0 ? "error" : slowRequests > 0 ? "warn" : parts.counts.network > 0 ? "ok" : "neutral",
+    },
+    {
+      label: "Console Logs",
+      value: String(parts.counts.console),
+      detail: `${pluralize(parts.console.errorCount, "error")}, ${pluralize(parts.console.warningCount, "warning")}`,
+      tone: parts.console.errorCount > 0 ? "error" : parts.console.warningCount > 0 ? "warn" : parts.counts.console > 0 ? "ok" : "neutral",
+    },
+    {
+      label: "User Context",
+      value: compactBrowserLabel(parts.browserName, parts.browserVersion),
+      detail: contextDetail,
+      tone: "neutral",
+    },
+    {
+      label: "Evidence",
+      value: evidenceValueParts.length > 0 ? evidenceValueParts.join(" + ") : "Metadata only",
+      detail: evidenceDetailParts.length > 0 ? evidenceDetailParts.join(", ") : "Basic report data",
+      tone: evidenceValueParts.length > 0 || evidenceDetailParts.length > 0 ? "ok" : "neutral",
+    },
+  ];
 }
 
 function buildAiSummary(snapshot: ShareSnapshot, parts: AiSummaryParts): string {
@@ -652,17 +745,21 @@ function buildNetworkDetailRow(request: NetworkRequestSnapshot): NetworkDetailVi
 function buildConsoleViewModel(logs: ShareSnapshot["console"]): ConsoleViewModel {
   const rows = [...logs]
     .sort((a, b) => a.timestamp - b.timestamp)
-    .map((entry): ConsoleViewRow => ({
-      id: entry.id,
-      type: entry.type,
-      severity: entry.type === "error" ? "error" : entry.type === "warn" ? "warn" : "info",
-      anchorId: anchorId("console", entry.id),
-      message: firstLine(entry.text),
-      source: entry.source,
-      frame: entry.frameUrl || "unknown frame",
-      timestamp: formatTimestamp(entry.timestamp),
-      isTop: typeof entry.isTop === "boolean" ? entry.isTop : null,
-    }));
+    .map((entry): ConsoleViewRow => {
+      const text = normalizeConsoleText(entry.text);
+      return {
+        id: entry.id,
+        type: entry.type,
+        severity: entry.type === "error" ? "error" : entry.type === "warn" ? "warn" : "info",
+        anchorId: anchorId("console", entry.id),
+        message: firstLine(text),
+        text,
+        source: entry.source,
+        frame: entry.frameUrl || "unknown frame",
+        timestamp: formatTimestamp(entry.timestamp),
+        isTop: typeof entry.isTop === "boolean" ? entry.isTop : null,
+      };
+    });
 
   return {
     rows,
@@ -777,6 +874,12 @@ function durationNumber(value: string): number {
 
 function firstLine(value: string): string {
   return value.split(/\r?\n/)[0] || value;
+}
+
+function normalizeConsoleText(value: string): string {
+  const trimmed = value.trim();
+  const emptyError = trimmed.match(/^(Error|[A-Z][A-Za-z]*Error):$/);
+  return emptyError?.[1] ?? value;
 }
 
 function buildStorageSections(storage: StorageSnapshot): StorageViewSection[] {
@@ -1039,6 +1142,12 @@ function formatViewport(viewportValue: unknown): string | undefined {
   return `${viewport.width} x ${viewport.height}${scale}`;
 }
 
+function formatCompactViewport(viewportValue: unknown): string | undefined {
+  const viewport = asRecord(viewportValue);
+  if (!viewport || typeof viewport.width !== "number" || typeof viewport.height !== "number") return undefined;
+  return `${viewport.width}x${viewport.height}`;
+}
+
 function formatScreen(screenValue: unknown): string | undefined {
   const screen = asRecord(screenValue);
   if (!screen || typeof screen.width !== "number" || typeof screen.height !== "number") return undefined;
@@ -1085,8 +1194,8 @@ function originForUrl(urlValue: string): string {
   }
 }
 
-function pluralize(count: number, singular: string): string {
-  return `${count} ${count === 1 ? singular : `${singular}s`}`;
+function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 function joinParts(...parts: Array<string | undefined>): string {
@@ -1160,4 +1269,9 @@ function readString(value: unknown, path: string[]): string {
     current = (current as Record<string, unknown>)[key];
   }
   return typeof current === "string" ? current : "";
+}
+
+function compactBrowserLabel(name: string, version: string): string {
+  const majorVersion = version.match(/^\d+/)?.[0] ?? "";
+  return joinParts(name, majorVersion) || "Unknown browser";
 }

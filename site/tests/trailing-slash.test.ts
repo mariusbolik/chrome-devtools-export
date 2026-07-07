@@ -15,7 +15,7 @@ describe("trailing slash redirects", () => {
     expect(trailingSlashRedirectTarget(new URL("https://devtoolsexport.com/api/health"))).toBeNull();
     expect(trailingSlashRedirectTarget(new URL("https://devtoolsexport.com/api/share/AbC234xy.json"))).toBeNull();
     expect(trailingSlashRedirectTarget(new URL("https://devtoolsexport.com/_astro/index.D4Ft5j-y.css"))).toBeNull();
-    expect(trailingSlashRedirectTarget(new URL("https://devtoolsexport.com/assets/icon/icon.png"))).toBeNull();
+    expect(trailingSlashRedirectTarget(new URL("https://devtoolsexport.com/favicon-96x96.png"))).toBeNull();
     expect(trailingSlashRedirectTarget(new URL("https://devtoolsexport.com/app.js"))).toBeNull();
   });
 });

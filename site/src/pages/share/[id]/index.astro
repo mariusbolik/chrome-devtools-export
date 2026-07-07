@@ -25,6 +25,12 @@ const formatDate = (value: string | undefined) => {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="DevTools" />
+    <link rel="manifest" href="/site.webmanifest" />
     <title>{model ? model.seoTitle : "Snapshot not found"}</title>
   </head>
   <body>
@@ -40,7 +46,7 @@ const formatDate = (value: string | undefined) => {
             <div class="sticky-shell">
               <header class="topbar">
                 <div class="brand">
-                  <img src="/assets/icon/icon.png" alt="" />
+                  <img src="/favicon.svg" alt="" />
                   <div>
                     <h1>{model.title}</h1>
                     <a href={model.safeUrl}>{model.url}</a>
@@ -64,31 +70,13 @@ const formatDate = (value: string | undefined) => {
               </header>
 
               <section class="summary-grid">
-                <div class="metric">
-                  <span>Triage</span>
-                  <strong>{model.issues.items.length}</strong>
-                  <em>{model.issues.items.filter((issue) => issue.severity === "error").length} errors</em>
-                </div>
-                <div class="metric">
-                  <span>Network</span>
-                  <strong>{model.counts.network}</strong>
-                  <em>{model.counts.networkErrors} failed</em>
-                </div>
-                <div class="metric">
-                  <span>Console</span>
-                  <strong>{model.counts.console}</strong>
-                  <em>{model.counts.consoleErrors} errors</em>
-                </div>
-                <div class="metric">
-                  <span>Client State</span>
-                  <strong>{model.storage.totalRows}</strong>
-                  <em>{model.counts.installedExtensions} extensions</em>
-                </div>
-                <div class={`metric ${model.captureFidelity.tone}`}>
-                  <span>Capture</span>
-                  <strong>{model.captureFidelity.label}</strong>
-                  <em>{model.counts.redactions} redactions</em>
-                </div>
+                {model.summaryCards.map((card) => (
+                  <div class={`metric ${card.tone}`}>
+                    <span>{card.label}</span>
+                    <strong>{card.value}</strong>
+                    <em>{card.detail}</em>
+                  </div>
+                ))}
               </section>
 
               <nav class="tabs" role="tablist" aria-label="Snapshot sections">
@@ -240,7 +228,7 @@ const formatDate = (value: string | undefined) => {
                     <em>{entry.frame}</em>
                     <time>{entry.timestamp}</time>
                   </summary>
-                  <pre>{snapshot.console.find((raw) => raw.id === entry.id)?.text}</pre>
+                  <pre>{entry.text}</pre>
                 </details>
               ))}
               {model.console.rows.length === 0 && <p class="empty">No console logs captured</p>}
@@ -509,12 +497,25 @@ const formatDate = (value: string | undefined) => {
             </div>
 
             <div class="panel json-panel" id="json" data-panel="json" role="tabpanel" aria-labelledby="json-tab" hidden>
+              <div class="toolbar toolbar-right">
+                <a class="filter-chip action-chip" href={`/api/share/${model.id}.json`} download={`devtoolsexport-${model.id}.json`}>
+                  <svg class="heroicon" data-heroicon="arrow-down-tray" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M7.5 12 12 16.5m0 0 4.5-4.5M12 16.5V3" />
+                  </svg>
+                  <span>Download JSON</span>
+                </a>
+              </div>
               <pre>{JSON.stringify(snapshot, null, 2)}</pre>
             </div>
 
             <div class="panel ai-summary-panel" id="ai-summary" data-panel="ai-summary" role="tabpanel" aria-labelledby="ai-summary-tab" hidden>
-              <div class="toolbar">
-                <button class="filter-chip" type="button" data-copy-target="aiSummaryText">Copy Summary</button>
+              <div class="toolbar toolbar-right">
+                <button class="filter-chip action-chip" type="button" data-copy-target="aiSummaryText" data-copy-label="Copy Summary">
+                  <svg class="heroicon" data-heroicon="clipboard-document" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                  </svg>
+                  <span data-action-label>Copy Summary</span>
+                </button>
               </div>
               <textarea id="aiSummaryText" class="ai-summary-text" readonly>{model.aiSummary}</textarea>
             </div>
@@ -637,19 +638,28 @@ const formatDate = (value: string | undefined) => {
               : target?.textContent || "";
             if (!text) return;
 
-            const initialText = button.textContent || "Copy";
+            const label = button.querySelector("[data-action-label]");
+            const initialText = button.getAttribute("data-copy-label") || button.textContent || "Copy";
+            const setActionLabel = (value) => {
+              if (label) {
+                label.textContent = value;
+              } else {
+                button.textContent = value;
+              }
+            };
+
             try {
               await navigator.clipboard.writeText(text);
-              button.textContent = "Copied";
+              setActionLabel("Copied");
             } catch {
               if (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) {
                 target.focus();
                 target.select();
               }
-              button.textContent = "Selected";
+              setActionLabel("Selected");
             }
             window.setTimeout(() => {
-              button.textContent = initialText;
+              setActionLabel(initialText);
             }, 1800);
           });
         }
@@ -809,6 +819,7 @@ const formatDate = (value: string | undefined) => {
   }
 
   .metric {
+    min-width: 0;
     min-height: 48px;
     padding: 7px 10px;
     border-right: 1px solid var(--border);
@@ -827,6 +838,7 @@ const formatDate = (value: string | undefined) => {
     color: var(--text);
     font-size: 16px;
     line-height: 1;
+    overflow-wrap: anywhere;
   }
 
   .metric.warn strong {
@@ -1037,6 +1049,10 @@ const formatDate = (value: string | undefined) => {
     background: var(--bg-light);
   }
 
+  .toolbar-right {
+    justify-content: flex-end;
+  }
+
   .filter-chip {
     display: inline-flex;
     align-items: center;
@@ -1048,6 +1064,17 @@ const formatDate = (value: string | undefined) => {
     color: var(--text-dim);
     font: inherit;
     cursor: pointer;
+  }
+
+  .action-chip {
+    gap: 6px;
+    text-decoration: none;
+  }
+
+  .heroicon {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
   }
 
   .filter-chip.active {

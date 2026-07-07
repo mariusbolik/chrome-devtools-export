@@ -29,8 +29,18 @@ describe("share page copy", () => {
     expect(sharePageSource).toContain("request.hasPayload");
     expect(sharePageSource).toContain("request.hasResponse");
     expect(sharePageSource).toContain("section.anchorId");
+    expect(sharePageSource).toContain("<pre>{entry.text}</pre>");
+    expect(sharePageSource).not.toContain("snapshot.console.find");
     expect(sharePageSource).toContain('model.cdp.domSnapshot.state === "available"');
     expect(sharePageSource).toContain("DOM snapshot was redacted before upload");
+    expect(sharePageSource).toContain("model.summaryCards.map");
+    expect(sharePageSource).toContain("card.label");
+    expect(sharePageSource).toContain("card.value");
+    expect(sharePageSource).toContain("card.detail");
+    expect(sharePageSource).not.toContain("<span>Network</span>");
+    expect(sharePageSource).not.toContain("<span>Console</span>");
+    expect(sharePageSource).not.toContain("<span>Client State</span>");
+    expect(sharePageSource).not.toContain("<span>Capture</span>");
     expect(sharePageSource).not.toContain("No request body captured");
     expect(sharePageSource).not.toContain("No response body captured");
     expect(sharePageSource).not.toContain("No headers captured for this request");
@@ -59,5 +69,17 @@ describe("share page copy", () => {
     expect(sharePageSource).not.toContain('target.scrollIntoView({ block: "start" })');
     expect(sharePageSource).toMatch(/\.app-shell\s*{[\s\S]*height: 100vh;/);
     expect(sharePageSource).toMatch(/\.details\s*{[\s\S]*overflow: hidden;/);
+  });
+
+  test("uses right-aligned Heroicons actions for AI summary copy and raw JSON download", () => {
+    expect(sharePageSource).toContain('<div class="toolbar toolbar-right">');
+    expect(sharePageSource).toContain('data-heroicon="clipboard-document"');
+    expect(sharePageSource).toContain('data-heroicon="arrow-down-tray"');
+    expect(sharePageSource).toContain("data-action-label");
+    expect(sharePageSource).toContain('querySelector("[data-action-label]")');
+    expect(sharePageSource).toContain('href={`/api/share/${model.id}.json`}');
+    expect(sharePageSource).toContain('download={`devtoolsexport-${model.id}.json`}');
+    expect(sharePageSource).toMatch(/\.toolbar-right\s*{[\s\S]*justify-content: flex-end;/);
+    expect(sharePageSource).toMatch(/\.heroicon\s*{[\s\S]*width: 14px;/);
   });
 });

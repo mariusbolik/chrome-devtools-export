@@ -87,6 +87,72 @@ describe("share view model", () => {
     ]);
   });
 
+  test("builds debugging-focused sticky summary cards", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com/app",
+      title: "Example App",
+      environment: {
+        browser: {
+          browser: { name: "Chrome", version: "126.0.0.0" },
+          os: { name: "macOS", version: "15.0" },
+        },
+        viewport: { width: 1440, height: 900, devicePixelRatio: 2 },
+        cloudflare: { country: "DE", city: "Berlin" },
+      },
+      network: [
+        {
+          id: 1,
+          method: "POST",
+          url: "https://example.com/api/save",
+          status: 500,
+          time: 1250,
+          source: "devtools",
+          requestHeaders: { "content-type": "application/json" },
+          responseHeaders: { "content-type": "application/json" },
+          requestBody: '{"name":"Ada"}',
+          responseBody: '{"error":"failed"}',
+        },
+        {
+          id: 2,
+          method: "GET",
+          url: "https://example.com/app.css",
+          status: 200,
+          time: 90,
+          source: "devtools",
+          requestHeaders: {},
+          responseHeaders: {},
+          requestBody: null,
+          responseBody: null,
+        },
+      ],
+      console: [
+        { id: 1, type: "error", text: "Failed to save profile", timestamp: 1, source: "content" },
+        { id: 2, type: "warn", text: "Slow request detected", timestamp: 2, source: "content" },
+      ],
+      storage: {
+        localStorage: { theme: "dark" },
+        sessionStorage: {},
+        cookies: { session: "redacted" },
+        indexedDB: {},
+      },
+      cdp: {
+        screenshotDataUrl: "data:image/png;base64,abc",
+        domSnapshot: { documents: [] },
+      },
+    });
+
+    const model = buildShareViewModel(snapshot);
+
+    expect(model.summaryCards).toEqual([
+      { label: "Triage", value: "3 issues", detail: "2 errors, 1 warning", tone: "error" },
+      { label: "Network Requests", value: "2", detail: "1 failed, 1 slow", tone: "error" },
+      { label: "Console Logs", value: "2", detail: "1 error, 1 warning", tone: "error" },
+      { label: "User Context", value: "Chrome 126", detail: "macOS, DE, 1440x900", tone: "neutral" },
+      { label: "Evidence", value: "Screenshot + DOM", detail: "Storage, headers, bodies", tone: "ok" },
+    ]);
+  });
+
   test("builds issue, network, and performance diagnostics for developer triage", () => {
     const snapshot = createSnapshot({
       id: "AbC234xy",
@@ -362,6 +428,22 @@ describe("share view model", () => {
       methodClass: "not-captured",
       captureNote: "Request method, headers, payload, and response body were not available from Resource Timing.",
     });
+  });
+
+  test("normalizes legacy empty Error console text for display", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com/app",
+      console: [
+        { id: 1, type: "debug", text: "Error: ", timestamp: 1, source: "content", frameUrl: "https://example.com/app" },
+        { id: 2, type: "debug", text: "TypeError: ", timestamp: 2, source: "content", frameUrl: "https://example.com/app" },
+      ],
+    });
+
+    const model = buildShareViewModel(snapshot);
+
+    expect(model.console.rows.map((row) => row.message)).toEqual(["Error", "TypeError"]);
+    expect(model.console.rows.map((row) => row.text)).toEqual(["Error", "TypeError"]);
   });
 
   test("groups repetitive body privacy notices for the overview", () => {
