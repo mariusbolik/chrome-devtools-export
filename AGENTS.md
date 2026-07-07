@@ -12,6 +12,7 @@
 - Aim for clean code and maximum simplicity.
 - Prefer the smallest clear implementation that solves the user-facing debugging problem.
 - Add abstractions only when they remove real duplication or make behavior easier to test.
+- Do not overengineer: avoid speculative architecture, generic frameworks, or extra options that are not needed for the current user problem.
 
 ## Important Paths
 

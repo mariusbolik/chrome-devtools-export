@@ -191,7 +191,7 @@ describe("share view model", () => {
     expect(model.captureFidelity).toEqual({
       mode: "mixed",
       label: "Mixed Capture",
-      detail: "Includes DevTools network records and resource timing records with limited HTTP details.",
+      detail: "Includes detailed network records and Resource Timing records with limited HTTP details.",
       tone: "warn",
     });
     expect(model.issues.items.map((issue) => [issue.severity, issue.title, issue.targetTab])).toEqual([
@@ -213,6 +213,8 @@ describe("share view model", () => {
         statusTone: "error",
         type: "unknown",
         sourceLabel: "DevTools",
+        anchorId: "network-1",
+        methodClass: "get",
         captureNote: null,
         size: "18 B",
         time: "980ms",
@@ -225,12 +227,14 @@ describe("share view model", () => {
         name: "/app.js",
         url: "https://cdn.example.com/app.js",
         safeUrl: "https://cdn.example.com/app.js",
-        method: "UNKNOWN",
+        method: "Not captured",
         statusLabel: "Not captured",
         statusTone: "neutral",
         type: "script",
         sourceLabel: "Resource Timing",
-        captureNote: "HTTP status, headers, payload, and response body were not available from popup capture.",
+        anchorId: "network-2",
+        methodClass: "not-captured",
+        captureNote: "Request method, headers, payload, and response body were not available from Resource Timing.",
         size: "402 kB transferred / 889 kB decoded",
         time: "1850ms",
         hasHeaders: false,
@@ -351,10 +355,12 @@ describe("share view model", () => {
     ]);
     expect(model.issues.items.some((issue) => issue.title === "Mobile-sized viewport")).toBe(false);
     expect(model.network.rows[0]).toMatchObject({
-      method: "UNKNOWN",
+      method: "Not captured",
       statusLabel: "Not captured",
       sourceLabel: "Resource Timing",
-      captureNote: "HTTP status, headers, payload, and response body were not available from popup capture.",
+      anchorId: "network-1",
+      methodClass: "not-captured",
+      captureNote: "Request method, headers, payload, and response body were not available from Resource Timing.",
     });
   });
 
@@ -416,8 +422,47 @@ describe("share view model", () => {
 
     expect(model.captureFidelity.mode).toBe("resource-timing");
     expect(model.network.rows[0].sourceLabel).toBe("Resource Timing");
-    expect(model.network.rows[0].method).toBe("UNKNOWN");
+    expect(model.network.rows[0].method).toBe("Not captured");
     expect(model.network.rows[0].statusLabel).toBe("Not captured");
+  });
+
+  test("builds anchors and labels for richer popup network rows", () => {
+    const snapshot = createSnapshot({
+      id: "AbC234xy",
+      url: "https://example.com/app",
+      network: [
+        {
+          id: 42,
+          method: "PATCH",
+          url: "https://example.com/api/settings",
+          status: 200,
+          time: 120,
+          source: "page-intercept",
+          initiatorType: "fetch",
+          requestHeaders: { "x-request-id": "abc" },
+          responseHeaders: { "content-type": "application/json" },
+          requestBody: '{"theme":"dark"}',
+          responseBody: '{"ok":true}',
+        },
+      ],
+      console: [
+        { id: 9, type: "error", text: "Failed to save settings", timestamp: 100, source: "content" },
+      ],
+    });
+
+    const model = buildShareViewModel(snapshot);
+
+    expect(model.network.details[0]).toMatchObject({
+      anchorId: "network-42",
+      method: "PATCH",
+      methodClass: "patch",
+      sourceLabel: "Page Intercept",
+      hasHeaders: true,
+      hasPayload: true,
+      hasResponse: true,
+    });
+    expect(model.console.rows[0].anchorId).toBe("console-9");
+    expect(model.issues.items[0].targetAnchor).toBe("console-9");
   });
 
   test("replaces unsafe page hrefs with a non-clickable fallback", () => {

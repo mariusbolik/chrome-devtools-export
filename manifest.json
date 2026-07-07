@@ -25,7 +25,8 @@
   "permissions": [
     "activeTab",
     "debugger",
-    "management"
+    "management",
+    "webRequest"
   ],
   "host_permissions": [
     "<all_urls>"

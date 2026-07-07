@@ -24,8 +24,16 @@ describe("share page copy", () => {
     expect(sharePageSource).toContain("privacy.summaryRows");
     expect(sharePageSource).toContain("model.aiSummary");
     expect(sharePageSource).toContain('data-copy-target="aiSummaryText"');
+    expect(sharePageSource).toContain("request.anchorId");
+    expect(sharePageSource).toContain("request.hasHeaders");
+    expect(sharePageSource).toContain("request.hasPayload");
+    expect(sharePageSource).toContain("request.hasResponse");
+    expect(sharePageSource).toContain("section.anchorId");
     expect(sharePageSource).toContain('model.cdp.domSnapshot.state === "available"');
     expect(sharePageSource).toContain("DOM snapshot was redacted before upload");
+    expect(sharePageSource).not.toContain("No request body captured");
+    expect(sharePageSource).not.toContain("No response body captured");
+    expect(sharePageSource).not.toContain("No headers captured for this request");
     expect(sharePageSource).not.toContain('type="radio"');
     expect(sharePageSource).not.toContain('for="tab-issues"');
     expect(sharePageSource).not.toContain('<label for="tab-summary">Overview</label>');

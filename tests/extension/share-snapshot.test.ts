@@ -3,8 +3,18 @@ import {
   normalizeInstalledExtensions,
   prepareSnapshotForUpload,
 } from "../../src/share-snapshot";
+import { SHARE_APP_URL_BLOCK_MESSAGE } from "../../shared/snapshot";
 
 describe("extension share snapshot helpers", () => {
+  test("prepareSnapshotForUpload rejects the product domain", () => {
+    expect(() =>
+      prepareSnapshotForUpload({
+        id: "AbC234xy",
+        url: "https://devtoolsexport.com/share/mbdv6vVG/",
+      })
+    ).toThrow(SHARE_APP_URL_BLOCK_MESSAGE);
+  });
+
   test("normalizeInstalledExtensions keeps only debugger-relevant extension fields", () => {
     const result = normalizeInstalledExtensions([
       {

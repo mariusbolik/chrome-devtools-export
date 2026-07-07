@@ -1,8 +1,10 @@
 import { UAParser } from "ua-parser-js";
 import {
   SNAPSHOT_SCHEMA_VERSION,
+  SHARE_APP_URL_BLOCK_MESSAGE,
   buildShareId,
   byteLength,
+  isShareAppUrl,
   isValidShareId,
   redactSnapshot,
   trimSnapshotToBytes,
@@ -75,6 +77,11 @@ export async function handleCreateShare(
     return json({ error: "Invalid snapshot", details: validation.errors }, 400);
   }
 
+  const snapshot = payload as ShareSnapshot;
+  if (isShareAppUrl(snapshot.page.url)) {
+    return json({ error: SHARE_APP_URL_BLOCK_MESSAGE }, 400);
+  }
+
   const now = context.now ?? new Date();
   const expiresAt = new Date(now.getTime() + THIRTY_DAYS_MS).toISOString();
   const id = context.idFactory?.() ?? buildShareId();
@@ -82,7 +89,7 @@ export async function handleCreateShare(
     return json({ error: "Generated invalid share id" }, 500);
   }
 
-  const enriched = enrichSnapshot(payload as ShareSnapshot, {
+  const enriched = enrichSnapshot(snapshot, {
     id,
     now,
     expiresAt,

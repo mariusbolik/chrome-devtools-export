@@ -1,5 +1,22 @@
-import { buildShareId, type CdpSnapshot, type InstalledExtensionSnapshot } from "../shared/snapshot";
+import {
+  SHARE_APP_URL_BLOCK_MESSAGE,
+  buildShareId,
+  isShareAppUrl,
+  type CdpSnapshot,
+  type InstalledExtensionSnapshot,
+} from "../shared/snapshot";
 import { buildDirectSnapshotInput, type PageCapture } from "./direct-share";
+import {
+  clearNetworkCaptureForTab,
+  createNetworkCaptureStore,
+  getCapturedNetworkRequests,
+  recordBeforeRequest,
+  recordCompleted,
+  recordErrorOccurred,
+  recordHeadersReceived,
+  recordPageNetworkEntry,
+  recordSendHeaders,
+} from "./network-capture";
 import {
   captureCdpSnapshot,
   normalizeInstalledExtensions,
@@ -26,6 +43,7 @@ interface ConsoleLogEntry extends ConsoleLogData {
 // Store logs per tab (simple object for service worker persistence)
 const tabLogs: Record<number, ConsoleLogEntry[]> = {};
 const tabConnections: Record<number, chrome.runtime.Port[]> = {};
+const networkCapture = createNetworkCaptureStore(500);
 const pendingShareRequests: Record<
   string,
   {
@@ -61,6 +79,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!sender.tab?.id) return;
   const tabId = sender.tab.id;
 
+  if (message.type === "network-log") {
+    recordPageNetworkEntry(networkCapture, tabId, message.data);
+    return;
+  }
+
   if (message.type !== "console-log") return;
 
   // Initialize if needed
@@ -94,8 +117,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function shareActiveTab(tabId: number, options: ShareActiveTabOptions): Promise<ShareResponseMessage> {
   try {
-    const [page, installedExtensions, cdp] = await Promise.all([
-      collectPageCapture(tabId),
+    const page = await collectPageCapture(tabId);
+    if (isShareAppUrl(page.url)) {
+      throw new Error(SHARE_APP_URL_BLOCK_MESSAGE);
+    }
+
+    const [installedExtensions, cdp] = await Promise.all([
       collectInstalledExtensions(),
       captureCdpSnapshot(tabId, { includeScreenshot: options.includeScreenshot }).catch((error): CdpSnapshot => ({
         errors: [error instanceof Error ? error.message : "CDP capture failed"],
@@ -110,6 +137,7 @@ async function shareActiveTab(tabId: number, options: ShareActiveTabOptions): Pr
         environment: collectRuntimeEnvironment(page),
         installedExtensions,
         consoleLogs: tabLogs[tabId] ?? [],
+        networkRequests: getCapturedNetworkRequests(networkCapture, tabId),
         cdp,
       }),
       { includeScreenshot: options.includeScreenshot }
@@ -299,4 +327,24 @@ chrome.runtime.onConnect.addListener((port) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   delete tabLogs[tabId];
   delete tabConnections[tabId];
+  clearNetworkCaptureForTab(networkCapture, tabId);
 });
+
+if (chrome.webRequest) {
+  const filter: chrome.webRequest.RequestFilter = { urls: ["<all_urls>"] };
+  chrome.webRequest.onBeforeRequest.addListener((details) => {
+    recordBeforeRequest(networkCapture, details);
+  }, filter, ["requestBody"]);
+  chrome.webRequest.onSendHeaders.addListener((details) => {
+    recordSendHeaders(networkCapture, details);
+  }, filter, ["requestHeaders"]);
+  chrome.webRequest.onHeadersReceived.addListener((details) => {
+    recordHeadersReceived(networkCapture, details);
+  }, filter, ["responseHeaders"]);
+  chrome.webRequest.onCompleted.addListener((details) => {
+    recordCompleted(networkCapture, details);
+  }, filter, ["responseHeaders"]);
+  chrome.webRequest.onErrorOccurred.addListener((details) => {
+    recordErrorOccurred(networkCapture, details);
+  }, filter);
+}

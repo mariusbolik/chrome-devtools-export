@@ -9,6 +9,7 @@ import type {
   ShareSnapshot,
   StorageSnapshot,
 } from "../shared/snapshot";
+import { mergeNetworkRequests } from "./network-capture";
 
 export interface PageResourceCapture {
   name: string;
@@ -48,6 +49,7 @@ export interface DirectSnapshotInputOptions {
   installedExtensions: InstalledExtensionSnapshot[];
   consoleLogs: ConsoleLogEntry[];
   cdp: CdpSnapshot;
+  networkRequests?: NetworkRequestSnapshot[];
 }
 
 export function buildDirectSnapshotInput(options: DirectSnapshotInputOptions): CreateSnapshotInput {
@@ -66,7 +68,7 @@ export function buildDirectSnapshotInput(options: DirectSnapshotInputOptions): C
     pageDiagnostics: options.page.pageDiagnostics,
     installedExtensions: options.installedExtensions,
     captureNotices: options.page.captureNotices,
-    network: options.page.resources.map(resourceToNetworkRequest),
+    network: mergeNetworkRequests(options.networkRequests ?? [], options.page.resources.map(resourceToNetworkRequest)),
     console: options.consoleLogs.map((entry) => ({ ...entry, source: entry.source ?? "content" })),
     storage: options.page.storage,
     cdp: {

@@ -1,8 +1,10 @@
 import type { ConsoleLogEntry } from "./types";
 import {
   SNAPSHOT_SCHEMA_VERSION,
+  SHARE_APP_URL_BLOCK_MESSAGE,
   buildShareId,
   createSnapshot,
+  isShareAppUrl,
   redactSnapshot,
   trimSnapshotToBytes,
   type CreateSnapshotInput,
@@ -63,6 +65,10 @@ export function prepareSnapshotForUpload(
   input: CreateSnapshotInput,
   options: PrepareOptions = {}
 ): { snapshot: ShareSnapshot } {
+  if (isShareAppUrl(input.url)) {
+    throw new Error(SHARE_APP_URL_BLOCK_MESSAGE);
+  }
+
   const snapshot = createSnapshot(input);
   const redacted = redactSnapshot(snapshot, {
     includeSensitive: options.includeSensitive === true,
@@ -73,8 +79,12 @@ export function prepareSnapshotForUpload(
 }
 
 export async function shareDevtoolsSnapshot(options: ShareSnapshotOptions): Promise<ShareResponse> {
-  const [page, storage, installedExtensions, cdp] = await Promise.all([
-    collectPageMetadata(),
+  const page = await collectPageMetadata();
+  if (isShareAppUrl(page.url)) {
+    throw new Error(SHARE_APP_URL_BLOCK_MESSAGE);
+  }
+
+  const [storage, installedExtensions, cdp] = await Promise.all([
     collectStorageSnapshot(),
     collectInstalledExtensions(),
     captureCdpSnapshot(options.inspectedTabId, { includeScreenshot: options.includeScreenshot }),

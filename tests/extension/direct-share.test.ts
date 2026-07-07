@@ -59,23 +59,35 @@ describe("direct share snapshot input", () => {
       installedExtensions: [],
       consoleLogs: [],
       cdp: { errors: ["Page.captureScreenshot: denied"] },
+      networkRequests: [
+        {
+          id: 1,
+          method: "GET",
+          url: "https://example.com/app.js",
+          status: 200,
+          time: 18,
+          source: "web-request",
+          initiatorType: "script",
+          requestHeaders: { accept: "*/*" },
+          responseHeaders: { "content-type": "application/javascript" },
+          requestBody: null,
+          responseBody: null,
+        },
+      ],
     });
 
     expect(input.url).toBe("https://example.com/app");
     expect(input.network).toEqual([
       {
         id: 1,
-        method: "UNKNOWN",
+        method: "GET",
         url: "https://example.com/app.js",
         status: 200,
-        time: 12,
-        source: "resource-timing",
+        time: 18,
+        source: "web-request",
         initiatorType: "script",
-        transferSize: 128000,
-        encodedBodySize: 120000,
-        decodedBodySize: 260000,
-        requestHeaders: {},
-        responseHeaders: {},
+        requestHeaders: { accept: "*/*" },
+        responseHeaders: { "content-type": "application/javascript" },
         requestBody: null,
         responseBody: null,
       },

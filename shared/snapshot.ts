@@ -2,6 +2,8 @@ export const SNAPSHOT_SCHEMA_VERSION = "devtools-export.snapshot.v1" as const;
 export const SHARE_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 export const SHARE_ID_LENGTH = 8;
 export const REDACTED_VALUE = "[REDACTED]";
+export const SHARE_APP_HOST = "devtoolsexport.com";
+export const SHARE_APP_URL_BLOCK_MESSAGE = "DevToolsExport cannot create bug reports for devtoolsexport.com.";
 
 const SENSITIVE_KEY_PATTERN =
   /authorization|cookie|set-cookie|token|secret|password|passwd|api[-_]?key|access[-_]?key|session|sid|jwt|credential/i;
@@ -14,7 +16,7 @@ export interface NetworkRequestSnapshot {
   url: string;
   status: number;
   time: number;
-  source?: "devtools" | "resource-timing";
+  source?: "devtools" | "page-intercept" | "resource-timing" | "web-request";
   initiatorType?: string;
   transferSize?: number;
   encodedBodySize?: number;
@@ -183,6 +185,17 @@ export function buildShareId(): string {
     id += SHARE_ID_ALPHABET[byte % SHARE_ID_ALPHABET.length];
   }
   return id;
+}
+
+export function isShareAppUrl(urlValue: string | undefined): boolean {
+  if (!urlValue) return false;
+
+  try {
+    const hostname = new URL(urlValue).hostname.toLowerCase();
+    return hostname === SHARE_APP_HOST || hostname.endsWith(`.${SHARE_APP_HOST}`);
+  } catch {
+    return false;
+  }
 }
 
 export function createSnapshot(input: CreateSnapshotInput): ShareSnapshot {

@@ -10,6 +10,7 @@ export interface StorageViewRow {
 
 export interface StorageViewSection {
   id: keyof StorageSnapshot;
+  anchorId: string;
   label: string;
   rows: StorageViewRow[];
 }
@@ -54,6 +55,7 @@ export interface IssueViewRow {
   title: string;
   detail: string;
   targetTab: SharePanelTarget;
+  targetAnchor?: string;
 }
 
 export interface IssuesViewModel {
@@ -71,6 +73,8 @@ export interface NetworkViewRow {
   statusTone: StatusViewRow["tone"];
   type: string;
   sourceLabel: string;
+  anchorId: string;
+  methodClass: string;
   captureNote: string | null;
   size: string;
   time: string;
@@ -100,6 +104,7 @@ export interface ConsoleViewRow {
   id: number;
   type: string;
   severity: "error" | "info" | "warn";
+  anchorId: string;
   message: string;
   source: string;
   frame: string;
@@ -151,6 +156,7 @@ export interface CdpViewModel {
 
 export interface EnvironmentViewSection {
   id: "browser" | "device" | "extension" | "location";
+  anchorId: string;
   label: string;
   rows: DetailViewRow[];
 }
@@ -172,6 +178,7 @@ export interface EnvironmentViewModel {
 }
 
 export interface SourceTreeSection {
+  anchorId: string;
   origin: string;
   rows: Array<{
     type: string;
@@ -371,7 +378,7 @@ function buildAiSummary(snapshot: ShareSnapshot, parts: AiSummaryParts): string 
   lines.push("", "Likely failures");
   if (parts.issues.items.length > 0) {
     for (const issue of parts.issues.items.slice(0, 8)) {
-      lines.push(`- [${issue.severity}] ${issue.title}: ${issue.detail} (see ${issue.targetTab})`);
+      lines.push(`- [${issue.severity}] ${issue.title}: ${issue.detail} (see #${issue.targetAnchor || issue.targetTab})`);
     }
   } else {
     lines.push("- No obvious console, network, or capture problems detected.");
@@ -470,13 +477,15 @@ function buildCaptureFidelity(network: NetworkRequestSnapshot[]): CaptureFidelit
   }
 
   const resourceTimingCount = network.filter(isResourceTimingRequest).length;
-  const devtoolsCount = network.length - resourceTimingCount;
+  const devtoolsCount = network.filter((request) => request.source === "devtools" || (!request.source && !isResourceTimingRequest(request))).length;
+  const browserCaptureCount = network.filter((request) => request.source === "web-request" || request.source === "page-intercept").length;
+  const richCaptureCount = devtoolsCount + browserCaptureCount;
 
-  if (resourceTimingCount > 0 && devtoolsCount > 0) {
+  if (resourceTimingCount > 0 && richCaptureCount > 0) {
     return {
       mode: "mixed",
       label: "Mixed Capture",
-      detail: "Includes DevTools network records and resource timing records with limited HTTP details.",
+      detail: "Includes detailed network records and Resource Timing records with limited HTTP details.",
       tone: "warn",
     };
   }
@@ -487,6 +496,15 @@ function buildCaptureFidelity(network: NetworkRequestSnapshot[]): CaptureFidelit
       label: "Resource Timing Capture",
       detail: "Captured from the active tab. HTTP status, headers, payloads, and response bodies may be unavailable.",
       tone: "warn",
+    };
+  }
+
+  if (browserCaptureCount > 0) {
+    return {
+      mode: "devtools",
+      label: "Browser Network Capture",
+      detail: "Captured from the popup with Chrome network events and page-level request body previews when available.",
+      tone: "ok",
     };
   }
 
@@ -517,6 +535,7 @@ function buildIssuesViewModel(
       title: "Console error",
       detail: firstLine(consoleError.text),
       targetTab: "console",
+      targetAnchor: anchorId("console", consoleError.id),
     });
   }
 
@@ -526,6 +545,7 @@ function buildIssuesViewModel(
       title: "Failed request",
       detail: `${failedRequest.status} ${failedRequest.method} ${pathForUrl(failedRequest.url)} in ${formatMilliseconds(failedRequest.time)}`,
       targetTab: "network",
+      targetAnchor: anchorId("network", failedRequest.id),
     });
   }
 
@@ -535,6 +555,7 @@ function buildIssuesViewModel(
       title: "Slow resource",
       detail: `${pathForUrl(slowRequest.url)} took ${formatMilliseconds(slowRequest.time)}`,
       targetTab: "network",
+      targetAnchor: anchorId("network", slowRequest.id),
     });
   }
 
@@ -603,16 +624,18 @@ function buildNetworkDetailRow(request: NetworkRequestSnapshot): NetworkDetailVi
 
   return {
     id: request.id,
+    anchorId: anchorId("network", request.id),
     name: pathForUrl(request.url),
     url: request.url,
     safeUrl: safeHttpUrl(request.url),
-    method: isResourceTiming ? "UNKNOWN" : request.method,
+    method: isResourceTiming ? "Not captured" : request.method,
+    methodClass: isResourceTiming ? "not-captured" : cssToken(request.method),
     statusLabel: request.status > 0 ? String(request.status) : isResourceTiming ? "Not captured" : "Unknown",
     statusTone: networkStatusTone(request.status),
     type: request.initiatorType || "unknown",
-    sourceLabel: isResourceTiming ? "Resource Timing" : "DevTools",
+    sourceLabel: networkSourceLabel(request.source, isResourceTiming),
     captureNote: isResourceTiming
-      ? "HTTP status, headers, payload, and response body were not available from popup capture."
+      ? "Request method, headers, payload, and response body were not available from Resource Timing."
       : null,
     size: formatNetworkSize(request),
     time: formatMilliseconds(request.time),
@@ -633,6 +656,7 @@ function buildConsoleViewModel(logs: ShareSnapshot["console"]): ConsoleViewModel
       id: entry.id,
       type: entry.type,
       severity: entry.type === "error" ? "error" : entry.type === "warn" ? "warn" : "info",
+      anchorId: anchorId("console", entry.id),
       message: firstLine(entry.text),
       source: entry.source,
       frame: entry.frameUrl || "unknown frame",
@@ -662,7 +686,8 @@ function buildSourcesViewModel(cdp: CdpViewModel): SourcesViewModel {
   return {
     sections: [...groups.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([origin, rows]) => ({
+      .map(([origin, rows], index) => ({
+        anchorId: anchorId("resources", index + 1),
         origin,
         rows: rows.sort((a, b) => a.path.localeCompare(b.path)),
       })),
@@ -697,7 +722,7 @@ function buildPerformanceViewModel(snapshot: ShareSnapshot, cdp: CdpViewModel): 
 
 function isResourceTimingRequest(request: NetworkRequestSnapshot): boolean {
   if (request.source === "resource-timing") return true;
-  if (request.source === "devtools") return false;
+  if (request.source === "devtools" || request.source === "page-intercept" || request.source === "web-request") return false;
   return (
     request.status === 0 &&
     Object.keys(request.requestHeaders).length === 0 &&
@@ -705,6 +730,13 @@ function isResourceTimingRequest(request: NetworkRequestSnapshot): boolean {
     request.requestBody === null &&
     request.responseBody === null
   );
+}
+
+function networkSourceLabel(source: NetworkRequestSnapshot["source"], isResourceTiming: boolean): string {
+  if (isResourceTiming) return "Resource Timing";
+  if (source === "page-intercept") return "Page Intercept";
+  if (source === "web-request") return "Web Request";
+  return "DevTools";
 }
 
 function networkStatusTone(status: number): StatusViewRow["tone"] {
@@ -752,6 +784,7 @@ function buildStorageSections(storage: StorageSnapshot): StorageViewSection[] {
     const values = storage[section.id] ?? {};
     return {
       ...section,
+      anchorId: `storage-${section.id}`,
       rows: Object.keys(values)
         .sort((a, b) => a.localeCompare(b))
         .map((key) => ({
@@ -929,6 +962,7 @@ function buildEnvironmentViewModel(snapshot: ShareSnapshot): EnvironmentViewMode
     sections: [
       {
         id: "browser",
+        anchorId: "environment-browser",
         label: "Browser",
         rows: compactRows([
           detailRow("Browser", joinParts(readString(browser, ["browser", "name"]), readString(browser, ["browser", "version"]))),
@@ -940,6 +974,7 @@ function buildEnvironmentViewModel(snapshot: ShareSnapshot): EnvironmentViewMode
       },
       {
         id: "device",
+        anchorId: "environment-device",
         label: "Device",
         rows: compactRows([
           detailRow("Platform", environment.platform),
@@ -952,6 +987,7 @@ function buildEnvironmentViewModel(snapshot: ShareSnapshot): EnvironmentViewMode
       },
       {
         id: "location",
+        anchorId: "environment-location",
         label: "Location",
         rows: compactRows([
           detailRow("Location", joinCommaParts(readString(cloudflare, ["city"]), readString(cloudflare, ["country"]))),
@@ -962,6 +998,7 @@ function buildEnvironmentViewModel(snapshot: ShareSnapshot): EnvironmentViewMode
       },
       {
         id: "extension",
+        anchorId: "environment-extension",
         label: "Extension",
         rows: compactRows([
           detailRow("Extension ID", snapshot.extension.id),
@@ -1088,6 +1125,15 @@ function safeHttpUrl(urlValue: string): string {
     // Fall through to fallback.
   }
   return "#";
+}
+
+function anchorId(prefix: string, value: string | number): string {
+  return `${prefix}-${cssToken(String(value))}`;
+}
+
+function cssToken(value: string): string {
+  const token = value.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  return token || "item";
 }
 
 function browserIconUrl(name: string): string | null {

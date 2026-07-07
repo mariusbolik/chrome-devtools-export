@@ -4,6 +4,7 @@ import {
   SHARE_ID_ALPHABET,
   buildShareId,
   createSnapshot,
+  isShareAppUrl,
   redactSnapshot,
   trimSnapshotToBytes,
   validateSnapshot,
@@ -17,6 +18,16 @@ describe("shared snapshot utilities", () => {
     for (const char of id) {
       expect(SHARE_ID_ALPHABET).toContain(char);
     }
+  });
+
+  test("isShareAppUrl detects the product domain and its subdomains only", () => {
+    expect(isShareAppUrl("https://devtoolsexport.com/")).toBe(true);
+    expect(isShareAppUrl("https://devtoolsexport.com/share/mbdv6vVG/")).toBe(true);
+    expect(isShareAppUrl("https://www.devtoolsexport.com/share/mbdv6vVG/")).toBe(true);
+    expect(isShareAppUrl("https://debug.devtoolsexport.com/")).toBe(true);
+    expect(isShareAppUrl("https://example.com/?next=https://devtoolsexport.com/share/x/")).toBe(false);
+    expect(isShareAppUrl("https://devtoolsexport.com.evil.test/")).toBe(false);
+    expect(isShareAppUrl("not a url")).toBe(false);
   });
 
   test("redactSnapshot masks sensitive headers, query params, cookies, and storage values", () => {

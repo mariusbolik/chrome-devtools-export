@@ -18,7 +18,7 @@ function fixtureHtml() {
           <a id="console-tab" href="#console" role="tab" data-tab="console" aria-selected="false">Console</a>
           <a id="network-tab" href="#network" role="tab" data-tab="network" aria-selected="false">Network</a>
         </nav>
-        <a class="issue-row" href="#network">Network issue</a>
+        <a class="issue-row" href="#network-1">Network issue</a>
         <span id="expiryCountdown" data-expires-at="2099-01-01T00:00:00.000Z">Expires in ...</span>
         <section id="triage" data-panel="triage" role="tabpanel">triage</section>
         <section id="ai-summary" data-panel="ai-summary" role="tabpanel" hidden>
@@ -31,7 +31,16 @@ function fixtureHtml() {
           <details data-console-severity="warn"><summary>Warning</summary></details>
           <details data-console-severity="error"><summary>Error</summary></details>
         </section>
-        <section id="network" data-panel="network" role="tabpanel" hidden>network</section>
+        <section id="network" data-panel="network" role="tabpanel" hidden>
+          <details id="network-1" class="network-item">
+            <summary>network 1</summary>
+            <div>network details</div>
+          </details>
+          <details id="network-2" class="network-item">
+            <summary>network 2</summary>
+            <div>network details</div>
+          </details>
+        </section>
         <script>${inlineScript}</script>
       </body>
     </html>`;
@@ -59,7 +68,11 @@ test("share page script keeps hash tabs and console filters usable", async ({ pa
   await expect(page.locator('[data-console-severity="warn"]')).toBeHidden();
 
   await page.locator(".issue-row").click();
-  await expect(page).toHaveURL(/#network$/);
+  await expect(page).toHaveURL(/#network-1$/);
   await expect(page.locator('[data-tab="network"]')).toHaveAttribute("aria-selected", "true");
   await expect(page.locator('[data-panel="network"]')).toBeVisible();
+  await expect(page.locator("#network-1")).toHaveAttribute("open", "");
+
+  await page.locator("#network-2 > summary").click();
+  await expect(page).toHaveURL(/#network-2$/);
 });

@@ -123,7 +123,7 @@ const formatDate = (value: string | undefined) => {
                 {model.issues.items.length > 0 ? (
                   <div class="issue-list">
                     {model.issues.items.map((issue) => (
-                      <a class={`issue-row ${issue.severity}`} href={`#${issue.targetTab}`}>
+                      <a class={`issue-row ${issue.severity}`} href={`#${issue.targetAnchor || issue.targetTab}`}>
                         <span>{issue.severity}</span>
                         <strong>{issue.title}</strong>
                         <em>{issue.detail}</em>
@@ -200,7 +200,7 @@ const formatDate = (value: string | undefined) => {
                 null
               )}
 
-              <section class="ui-section">
+              <section id="page-layout" class="ui-section" tabindex="-1">
                 <h2>Layout</h2>
                 {model.cdp.layoutRows.length > 0 ? (
                   <div class="kv-table">
@@ -217,12 +217,12 @@ const formatDate = (value: string | undefined) => {
               </section>
 
               {model.cdp.domSnapshot.state === "available" ? (
-                <details class="raw-details">
+                <details id="page-dom-snapshot" class="raw-details" tabindex="-1">
                   <summary><span>DOM snapshot state</span><em>{model.cdp.domSnapshot.label}</em></summary>
                   <pre>{JSON.stringify(snapshot.cdp.domSnapshot, null, 2)}</pre>
                 </details>
               ) : (
-                <section class="ui-section">
+                <section id="page-dom-snapshot" class="ui-section" tabindex="-1">
                   <h2>DOM snapshot state</h2>
                   {model.cdp.domSnapshot.state === "redacted" ? (
                     <p class="empty compact">DOM snapshot was redacted before upload because it can contain private page text, attributes, and user-entered values.</p>
@@ -240,7 +240,7 @@ const formatDate = (value: string | undefined) => {
                 <button class="filter-chip warn" type="button" data-console-filter="warn">Warnings {model.console.warningCount}</button>
               </div>
               {model.console.rows.map((entry) => (
-                <details class={`log-row ${entry.severity}`} data-console-severity={entry.severity} open={entry.severity === "error"}>
+                <details id={entry.anchorId} class={`log-row ${entry.severity}`} data-console-severity={entry.severity} open={entry.severity === "error"} tabindex="-1">
                   <summary>
                     <span>{entry.type}</span>
                     <strong>{entry.message}</strong>
@@ -256,7 +256,7 @@ const formatDate = (value: string | undefined) => {
             <div class="panel resources-panel" id="resources" data-panel="resources" role="tabpanel" aria-labelledby="resources-tab" hidden>
               {model.sources.sections.length > 0 ? (
                 model.sources.sections.map((section) => (
-                  <details class="source-group" open>
+                  <details id={section.anchorId} class="source-group" open tabindex="-1">
                     <summary><span>{section.origin}</span><em>{section.rows.length} resources</em></summary>
                     <div class="asset-table">
                       <div class="asset-row table-header"><span>Type</span><span>Path</span><span>Duration</span></div>
@@ -283,11 +283,11 @@ const formatDate = (value: string | undefined) => {
               <div class="network-table">
                 <div class="network-row table-header"><span>Name</span><span>Status</span><span>Method</span><span>Source</span><span>Type</span><span>Size</span><span>Time</span></div>
                 {model.network.details.map((request) => (
-                  <details class="network-item">
+                  <details id={request.anchorId} class="network-item" tabindex="-1">
                     <summary class="network-row network-summary">
                       <span class="path"><span class="twisty" aria-hidden="true">›</span>{request.name}</span>
                       <span class={`status ${request.statusTone}`}>{request.statusLabel}</span>
-                      <span class={`method ${request.method.toLowerCase()}`}>{request.method}</span>
+                      <span class={`method ${request.methodClass}`}>{request.method}</span>
                       <span class={request.captureNote ? "source limited" : "source"}>{request.sourceLabel}</span>
                       <span>{request.type}</span>
                       <span>{request.size}</span>
@@ -295,31 +295,35 @@ const formatDate = (value: string | undefined) => {
                     </summary>
                     <div class="network-details">
                       {request.captureNote && <p class="capture-note">{request.captureNote}</p>}
-                      <section class="ui-section">
+                      {request.hasHeaders && <section class="ui-section">
                         <h2>Headers</h2>
-                        {request.requestHeaders.length > 0 || request.responseHeaders.length > 0 ? (
-                          <div class="headers-grid">
+                        <div class="headers-grid">
+                          {request.requestHeaders.length > 0 && (
+                            <>
                             <h3>Request Headers</h3>
                             {request.requestHeaders.map((header) => (
                               <div class="headers-row"><span>{header.name}</span><code>{header.value}</code></div>
                             ))}
+                            </>
+                          )}
+                          {request.responseHeaders.length > 0 && (
+                            <>
                             <h3>Response Headers</h3>
                             {request.responseHeaders.map((header) => (
                               <div class="headers-row"><span>{header.name}</span><code>{header.value}</code></div>
                             ))}
-                          </div>
-                        ) : (
-                          <p class="empty compact">{request.captureNote || "No headers captured for this request"}</p>
-                        )}
-                      </section>
-                      <section class="ui-section">
+                            </>
+                          )}
+                        </div>
+                      </section>}
+                      {request.hasPayload && <section class="ui-section">
                         <h2>Payload</h2>
-                        {request.requestBody ? <pre>{request.requestBody}</pre> : <p class="empty compact">{request.captureNote || "No request body captured"}</p>}
-                      </section>
-                      <section class="ui-section">
+                        <pre>{request.requestBody}</pre>
+                      </section>}
+                      {request.hasResponse && <section class="ui-section">
                         <h2>Response</h2>
-                        {request.responseBody ? <pre>{request.responseBody}</pre> : <p class="empty compact">{request.captureNote || "No response body captured"}</p>}
-                      </section>
+                        <pre>{request.responseBody}</pre>
+                      </section>}
                       <section class="ui-section">
                         <h2>Timing</h2>
                         <div class="kv-table">
@@ -343,7 +347,7 @@ const formatDate = (value: string | undefined) => {
                 </aside>
                 <div class="application-content">
                   {model.storage.sections.map((section) => (
-                    <details class="storage-bucket" open={section.rows.length > 0}>
+                    <details id={section.anchorId} class="storage-bucket" open={section.rows.length > 0} tabindex="-1">
                       <summary>
                         <span>{section.label}</span>
                         <em>{section.rows.length} {section.rows.length === 1 ? "entry" : "entries"}</em>
@@ -371,7 +375,7 @@ const formatDate = (value: string | undefined) => {
             </div>
 
             <div class="panel performance-panel" id="performance" data-panel="performance" role="tabpanel" aria-labelledby="performance-tab" hidden>
-              <section class="ui-section">
+              <section id="performance-document" class="ui-section" tabindex="-1">
                 <h2>Document</h2>
                 {model.performance.documentRows.length > 0 ? (
                   <div class="kv-table">
@@ -387,7 +391,7 @@ const formatDate = (value: string | undefined) => {
                 )}
               </section>
 
-              <section class="ui-section">
+              <section id="performance-navigation" class="ui-section" tabindex="-1">
                 <h2>Navigation timing</h2>
                 {model.performance.navigationRows.length > 0 ? (
                   <div class="kv-table">
@@ -403,7 +407,7 @@ const formatDate = (value: string | undefined) => {
                 )}
               </section>
 
-              <section class="ui-section">
+              <section id="performance-paint" class="ui-section" tabindex="-1">
                 <h2>Paint timing</h2>
                 {model.performance.paintRows.length > 0 ? (
                   <div class="kv-table">
@@ -419,7 +423,7 @@ const formatDate = (value: string | undefined) => {
                 )}
               </section>
 
-              <section class="ui-section">
+              <section id="performance-cdp" class="ui-section" tabindex="-1">
                 <h2>CDP performance metrics</h2>
                 {model.performance.cdpRows.length > 0 ? (
                   <div class="kv-table">
@@ -436,7 +440,7 @@ const formatDate = (value: string | undefined) => {
               </section>
 
               {model.performance.slowResources.length > 0 && (
-                <section class="ui-section">
+                <section id="performance-slow-resources" class="ui-section" tabindex="-1">
                   <h2>Slow resources</h2>
                   <div class="resource-table">
                     <div class="resource-row table-header"><span>Type</span><span>Path</span><span>Duration</span></div>
@@ -454,7 +458,7 @@ const formatDate = (value: string | undefined) => {
 
             <div class="panel environment-panel" id="environment" data-panel="environment" role="tabpanel" aria-labelledby="environment-tab" hidden>
               {model.environment.sections.map((section) => (
-                <section class="ui-section">
+                <section id={section.anchorId} class="ui-section" tabindex="-1">
                   <h2>{section.label}</h2>
                   {section.rows.length > 0 ? (
                     <div class="kv-table">
@@ -496,13 +500,13 @@ const formatDate = (value: string | undefined) => {
                 )}
               </section>
 
-              <details class="raw-details">
+              <details id="environment-raw" class="raw-details" tabindex="-1">
                 <summary><span>Raw Environment</span><em>JSON</em></summary>
                 <pre>{JSON.stringify({ environment: snapshot.environment, extension: snapshot.extension, installedExtensions: snapshot.installedExtensions }, null, 2)}</pre>
               </details>
 
               {model.cdp.errors.length > 0 && (
-                <section class="ui-section">
+                <section id="environment-cdp-errors" class="ui-section" tabindex="-1">
                   <h2>CDP capture errors</h2>
                   <div class="error-list">
                     {model.cdp.errors.map((error) => <code>{error}</code>)}
@@ -528,11 +532,23 @@ const formatDate = (value: string | undefined) => {
         };
         const tabs = Array.from(document.querySelectorAll("[data-tab]"));
         const panels = Array.from(document.querySelectorAll("[data-panel]"));
+        const getHashKey = (hash) => {
+          const value = (hash || "#triage").replace(/^#/, "") || "triage";
+          try {
+            return decodeURIComponent(value);
+          } catch {
+            return value;
+          }
+        };
         const normalizeTab = (hash) => {
-          const key = (hash || "#triage").replace(/^#/, "") || "triage";
+          const key = getHashKey(hash);
+          const target = document.getElementById(key);
+          const ownerPanel = target?.closest("[data-panel]");
+          if (ownerPanel) return ownerPanel.getAttribute("data-panel") || "triage";
           return aliases[key] || key;
         };
         const selectTab = (hash, focus = false) => {
+          const targetKey = getHashKey(hash);
           const key = normalizeTab(hash);
           const selected = document.querySelector(`[data-tab="${key}"]`);
           const panel = document.querySelector(`[data-panel="${key}"]`);
@@ -549,7 +565,16 @@ const formatDate = (value: string | undefined) => {
             item.hidden = item !== panel;
           }
 
-          if (focus && selected instanceof HTMLElement) selected.focus();
+          const target = document.getElementById(targetKey);
+          if (target && target !== panel) {
+            const details = target.closest("details");
+            if (details instanceof HTMLDetailsElement) details.open = true;
+            if (target instanceof HTMLDetailsElement) target.open = true;
+            target.scrollIntoView({ block: "start" });
+            if (focus && target instanceof HTMLElement) target.focus();
+          } else if (focus && selected instanceof HTMLElement) {
+            selected.focus();
+          }
         };
 
         selectTab(window.location.hash);
@@ -566,6 +591,15 @@ const formatDate = (value: string | undefined) => {
             if (next instanceof HTMLAnchorElement) {
               next.click();
             }
+          });
+        }
+
+        for (const item of document.querySelectorAll("details[id]")) {
+          item.addEventListener("toggle", () => {
+            if (!(item instanceof HTMLDetailsElement) || !item.open || !item.id) return;
+            if (window.location.hash === `#${item.id}`) return;
+            history.replaceState(null, "", `#${item.id}`);
+            selectTab(`#${item.id}`);
           });
         }
 
@@ -1227,7 +1261,8 @@ const formatDate = (value: string | undefined) => {
     color: var(--text-dim);
   }
 
-  .method.unknown {
+  .method.unknown,
+  .method.not-captured {
     color: var(--text-dim);
   }
 

@@ -4,7 +4,7 @@ export interface NetworkRequest {
   url: string;
   status: number;
   time: number;
-  source?: "devtools" | "resource-timing";
+  source?: "devtools" | "page-intercept" | "resource-timing" | "web-request";
   initiatorType?: string;
   transferSize?: number;
   encodedBodySize?: number;

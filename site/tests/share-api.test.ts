@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createSnapshot } from "../../shared/snapshot";
+import { SHARE_APP_URL_BLOCK_MESSAGE, createSnapshot } from "../../shared/snapshot";
 import {
   getSharedSnapshotJson,
   handleCorsPreflight,
@@ -35,6 +35,28 @@ function makeEnv(bucket = new MockR2Bucket()): ShareApiEnv {
 }
 
 describe("share API", () => {
+  test("handleCreateShare rejects snapshots captured from the product domain", async () => {
+    const bucket = new MockR2Bucket();
+    const response = await handleCreateShare(
+      new Request("https://devtoolsexport.com/api/share", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(
+          createSnapshot({
+            id: "Temp234x",
+            url: "https://devtoolsexport.com/share/mbdv6vVG/",
+          })
+        ),
+      }),
+      makeEnv(bucket)
+    );
+    const body = (await response.json()) as { error?: string };
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe(SHARE_APP_URL_BLOCK_MESSAGE);
+    expect(bucket.objects.size).toBe(0);
+  });
+
   test("handleCreateShare validates, redacts, trims, stores snapshot, and returns a share URL", async () => {
     const bucket = new MockR2Bucket();
     const request = new Request("https://devtoolsexport.com/api/share", {

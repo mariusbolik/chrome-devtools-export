@@ -1,10 +1,13 @@
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
-  if (!event.data || event.data.type !== "DEVTOOLS_EXPORT_LOG") return;
+  if (!event.data || (event.data.type !== "DEVTOOLS_EXPORT_LOG" && event.data.type !== "DEVTOOLS_EXPORT_NETWORK")) return;
   if (!event.data.data || typeof event.data.data !== "object") return;
 
   try {
-    chrome.runtime.sendMessage({ type: "console-log", data: event.data.data });
+    chrome.runtime.sendMessage({
+      type: event.data.type === "DEVTOOLS_EXPORT_NETWORK" ? "network-log" : "console-log",
+      data: event.data.data,
+    });
   } catch {
     // Ignore messaging errors (e.g. extension unloaded)
   }
