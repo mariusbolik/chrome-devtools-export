@@ -77,6 +77,18 @@ describe("landing page", () => {
     expect(pageSource).toContain('href="/terms/"');
   });
 
+  test("alternates landing section background colors", () => {
+    expect(pageSource).toContain(".solution,\n  .trust,\n  .creator-follow {\n    background: #191a1a;\n  }");
+    expect(pageSource).toContain(".proof,\n  .bottom-install {\n    background: var(--bg);\n  }");
+    expect(pageSource).not.toContain(".solution,\n  .trust {\n    background: var(--bg);\n  }");
+    expect(pageSource).not.toContain(".proof {\n    background: #191a1a;\n  }");
+  });
+
+  test("uses the main blue accent for small eyebrow headings", () => {
+    expect(pageSource).toContain(".eyebrow {\n    margin: 0 0 10px;\n    color: var(--blue);");
+    expect(pageSource).not.toContain(".eyebrow {\n    margin: 0 0 10px;\n    color: var(--green);");
+  });
+
   test("references product screenshots from the public screenshots directory", () => {
     expect(pageSource).toContain("/screenshots/chrome-export-panel.png");
     expect(pageSource).toContain("/screenshots/extension-popup.png");

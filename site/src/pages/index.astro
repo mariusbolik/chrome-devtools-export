@@ -458,7 +458,7 @@ const softwareApplicationJsonLd = JSON.stringify(
 
   .eyebrow {
     margin: 0 0 10px;
-    color: var(--green);
+    color: var(--blue);
     font-family: "SF Mono", Monaco, Consolas, monospace;
     font-size: 11px;
     line-height: 1.4;
@@ -625,12 +625,14 @@ const softwareApplicationJsonLd = JSON.stringify(
   }
 
   .solution,
-  .trust {
-    background: var(--bg);
+  .trust,
+  .creator-follow {
+    background: #191a1a;
   }
 
-  .proof {
-    background: #191a1a;
+  .proof,
+  .bottom-install {
+    background: var(--bg);
   }
 
   h2 {
@@ -863,7 +865,6 @@ const softwareApplicationJsonLd = JSON.stringify(
     justify-content: center;
     padding: clamp(34px, 6vw, 64px) 16px;
     border-bottom: 1px solid var(--border);
-    background: var(--bg);
   }
 
   .giant-store-button {
@@ -881,7 +882,6 @@ const softwareApplicationJsonLd = JSON.stringify(
 
   .creator-follow {
     border-bottom: 1px solid var(--border);
-    background: #191a1a;
   }
 
   .creator-inner {

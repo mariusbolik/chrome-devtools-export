@@ -51,4 +51,13 @@ describe("legal and contact pages", () => {
     expect(pageSource).toContain("anyone with the link can view");
     expect(pageSource).toContain("provided as is");
   });
+
+  test("uses the main blue accent for legal page eyebrow headings", () => {
+    for (const pagePath of Object.values(pagePaths)) {
+      const pageSource = readFileSync(pagePath, "utf8");
+
+      expect(pageSource).toContain(".eyebrow {\n    margin: 0 0 10px;\n    color: var(--blue);");
+      expect(pageSource).not.toContain(".eyebrow {\n    margin: 0 0 10px;\n    color: var(--green);");
+    }
+  });
 });
