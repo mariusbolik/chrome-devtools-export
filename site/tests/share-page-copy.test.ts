@@ -4,6 +4,30 @@ import { describe, expect, test } from "bun:test";
 const sharePageSource = readFileSync(new URL("../src/pages/share/[id]/index.astro", import.meta.url), "utf8");
 
 describe("share page copy", () => {
+  test("defines social sharing metadata for large cards", () => {
+    expect(sharePageSource).toContain("const pageTitle = model ? model.seoTitle : \"Snapshot not found\"");
+    expect(sharePageSource).toContain('const canonical = `https://devtoolsexport.com/share/${shareId}/`;');
+    expect(sharePageSource).toContain('<meta name="description" content={pageDescription} />');
+    expect(sharePageSource).toContain('<link rel="canonical" href={canonical} />');
+    expect(sharePageSource).toContain('<meta property="og:type" content="article" />');
+    expect(sharePageSource).toContain('<meta property="og:site_name" content="DevToolsExport" />');
+    expect(sharePageSource).toContain('<meta property="og:title" content={pageTitle} />');
+    expect(sharePageSource).toContain('<meta property="og:description" content={pageDescription} />');
+    expect(sharePageSource).toContain('<meta property="og:url" content={canonical} />');
+    expect(sharePageSource).toContain('<meta property="og:image" content={socialImageUrl} />');
+    expect(sharePageSource).toContain('<meta property="og:image:secure_url" content={socialImageUrl} />');
+    expect(sharePageSource).toContain('<meta property="og:image:type" content="image/png" />');
+    expect(sharePageSource).toContain('<meta property="og:image:width" content="1200" />');
+    expect(sharePageSource).toContain('<meta property="og:image:height" content="560" />');
+    expect(sharePageSource).toContain('<meta property="og:image:alt" content={socialImageAlt} />');
+    expect(sharePageSource).toContain('<meta name="twitter:card" content="summary_large_image" />');
+    expect(sharePageSource).toContain('<meta name="twitter:title" content={pageTitle} />');
+    expect(sharePageSource).toContain('<meta name="twitter:description" content={pageDescription} />');
+    expect(sharePageSource).toContain('<meta name="twitter:image" content={socialImageUrl} />');
+    expect(sharePageSource).toContain('<meta name="twitter:image:alt" content={socialImageAlt} />');
+    expect(sharePageSource).toContain('const socialImageUrl = "https://devtoolsexport.com/og-image.png"');
+  });
+
   test("uses honest hash-based tabs for a static DevTools export report", () => {
     expect(sharePageSource).toContain('role="tablist"');
     expect(sharePageSource).toContain('href="#triage"');

@@ -6,10 +6,26 @@ interface Props {
   description: string;
   title: string;
   bodyClass?: string;
+  imageAlt?: string;
+  imageHeight?: number;
+  imageUrl?: string;
+  imageWidth?: number;
+  ogType?: "website" | "article";
   showHeader?: boolean;
 }
 
-const { bodyClass = "", canonical, description, showHeader = false, title } = Astro.props;
+const {
+  bodyClass = "",
+  canonical,
+  description,
+  imageAlt = "DevToolsExport Chrome extension preview",
+  imageHeight = 560,
+  imageUrl = "https://devtoolsexport.com/og-image.png",
+  imageWidth = 1200,
+  ogType = "website",
+  showHeader = false,
+  title,
+} = Astro.props;
 const bodyClassValue = [bodyClass, showHeader ? "content-page" : ""].filter(Boolean).join(" ");
 ---
 
@@ -27,6 +43,22 @@ const bodyClassValue = [bodyClass, showHeader ? "content-page" : ""].filter(Bool
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content="DevToolsExport" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:secure_url" content={imageUrl} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content={String(imageWidth)} />
+    <meta property="og:image:height" content={String(imageHeight)} />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content={imageAlt} />
     <slot name="head" />
     <PirschAnalytics />
   </head>

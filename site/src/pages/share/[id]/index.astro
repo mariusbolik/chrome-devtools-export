@@ -16,6 +16,14 @@ if (!snapshot) {
 }
 
 const model = snapshot ? buildShareViewModel(snapshot) : null;
+const shareId = model?.id ?? Astro.params.id ?? "";
+const pageTitle = model ? model.seoTitle : "Snapshot not found";
+const pageDescription = model
+  ? `Shared Chrome DevTools snapshot for ${model.domain} with console logs, network requests, storage, environment, and screenshot context.`
+  : "The requested DevToolsExport share link is invalid or has expired.";
+const canonical = `https://devtoolsexport.com/share/${shareId}/`;
+const socialImageUrl = "https://devtoolsexport.com/og-image.png";
+const socialImageAlt = "DevToolsExport Chrome extension preview";
 
 const formatDate = (value: string | undefined) => {
   if (!value) return "unknown";
@@ -36,7 +44,25 @@ const formatDate = (value: string | undefined) => {
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="DevTools" />
     <link rel="manifest" href="/site.webmanifest" />
-    <title>{model ? model.seoTitle : "Snapshot not found"}</title>
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDescription} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="DevToolsExport" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={socialImageUrl} />
+    <meta property="og:image:secure_url" content={socialImageUrl} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="560" />
+    <meta property="og:image:alt" content={socialImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDescription} />
+    <meta name="twitter:image" content={socialImageUrl} />
+    <meta name="twitter:image:alt" content={socialImageAlt} />
     <PirschAnalytics />
   </head>
   <body>

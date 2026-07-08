@@ -15,7 +15,7 @@ const softwareApplicationJsonLd = JSON.stringify(
     "operatingSystem": "Chrome",
     "description": description,
     "url": "https://devtoolsexport.com/",
-    "image": "https://devtoolsexport.com/screenshots/chrome-export-panel.png",
+    "image": "https://devtoolsexport.com/og-image.png",
     "offers": {
       "@type": "Offer",
       "price": "0",
@@ -34,15 +34,6 @@ const softwareApplicationJsonLd = JSON.stringify(
   bodyClass="landing-page"
 >
   <Fragment slot="head">
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="DevToolsExport - Share Chrome DevTools Snapshots to Fix Bugs Faster" />
-    <meta property="og:description" content="Create one-click bug reports with full Chrome DevTools snapshots, console logs, network requests, screenshots, browser context, and a free Chrome extension." />
-    <meta property="og:url" content="https://devtoolsexport.com/" />
-    <meta property="og:image" content="https://devtoolsexport.com/screenshots/chrome-export-panel.png" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="DevToolsExport - Share Chrome DevTools Snapshots to Fix Bugs Faster" />
-    <meta name="twitter:description" content="Create one-click bug reports with full Chrome DevTools snapshots, console logs, network requests, screenshots, browser context, and a free Chrome extension." />
-    <meta name="twitter:image" content="https://devtoolsexport.com/screenshots/chrome-export-panel.png" />
     <script is:inline type="application/ld+json" set:html={softwareApplicationJsonLd}></script>
   </Fragment>
 

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 
 const pageSource = readFileSync(new URL("../src/pages/index.astro", import.meta.url), "utf8");
@@ -16,14 +16,25 @@ describe("landing page", () => {
     expect(pageSource).toContain("network requests");
     expect(pageSource).toContain('canonical="https://devtoolsexport.com/"');
     expect(layoutSource).toContain('<link rel="canonical" href={canonical} />');
-    expect(pageSource).toContain('<meta property="og:title"');
-    expect(pageSource).toContain('<meta property="og:description"');
-    expect(pageSource).toContain('<meta property="og:url" content="https://devtoolsexport.com/" />');
-    expect(pageSource).toContain('<meta property="og:image" content="https://devtoolsexport.com/screenshots/chrome-export-panel.png" />');
-    expect(pageSource).toContain('<meta name="twitter:card" content="summary_large_image" />');
-    expect(pageSource).toContain('<meta name="twitter:title"');
-    expect(pageSource).toContain('<meta name="twitter:description"');
-    expect(pageSource).toContain('<meta name="twitter:image" content="https://devtoolsexport.com/screenshots/chrome-export-panel.png" />');
+    expect(layoutSource).toContain('<meta property="og:type" content={ogType} />');
+    expect(layoutSource).toContain('<meta property="og:site_name" content="DevToolsExport" />');
+    expect(layoutSource).toContain('<meta property="og:title" content={title} />');
+    expect(layoutSource).toContain('<meta property="og:description" content={description} />');
+    expect(layoutSource).toContain('<meta property="og:url" content={canonical} />');
+    expect(layoutSource).toContain('<meta property="og:image" content={imageUrl} />');
+    expect(layoutSource).toContain('<meta property="og:image:secure_url" content={imageUrl} />');
+    expect(layoutSource).toContain('<meta property="og:image:type" content="image/png" />');
+    expect(layoutSource).toContain('<meta property="og:image:width" content={String(imageWidth)} />');
+    expect(layoutSource).toContain('<meta property="og:image:height" content={String(imageHeight)} />');
+    expect(layoutSource).toContain('<meta property="og:image:alt" content={imageAlt} />');
+    expect(layoutSource).toContain('<meta name="twitter:card" content="summary_large_image" />');
+    expect(layoutSource).toContain('<meta name="twitter:title" content={title} />');
+    expect(layoutSource).toContain('<meta name="twitter:description" content={description} />');
+    expect(layoutSource).toContain('<meta name="twitter:image" content={imageUrl} />');
+    expect(layoutSource).toContain('<meta name="twitter:image:alt" content={imageAlt} />');
+    expect(layoutSource).toContain('imageUrl = "https://devtoolsexport.com/og-image.png"');
+    expect(pageSource).toContain('"image": "https://devtoolsexport.com/og-image.png"');
+    expect(existsSync(new URL("../public/og-image.png", import.meta.url))).toBe(true);
   });
 
   test("includes SoftwareApplication schema for the free Chrome extension", () => {
