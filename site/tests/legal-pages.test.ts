@@ -7,6 +7,7 @@ const pagePaths = {
   terms: new URL("../src/pages/terms.astro", import.meta.url),
 };
 
+const layoutSource = readFileSync(new URL("../src/layouts/SiteLayout.astro", import.meta.url), "utf8");
 const readPage = (page: keyof typeof pagePaths) => readFileSync(pagePaths[page], "utf8");
 
 describe("legal and contact pages", () => {
@@ -19,7 +20,8 @@ describe("legal and contact pages", () => {
   test("privacy page explains Chrome Web Store data handling", () => {
     const pageSource = readPage("privacy");
 
-    expect(pageSource).toContain("<title>Privacy Policy - DevToolsExport</title>");
+    expect(pageSource).toContain('title="Privacy Policy - DevToolsExport"');
+    expect(layoutSource).toContain("<title>{title}</title>");
     expect(pageSource).toContain("<h1>Privacy Policy</h1>");
     expect(pageSource).toContain("DevTools snapshots");
     expect(pageSource).toContain("console logs");
@@ -34,7 +36,7 @@ describe("legal and contact pages", () => {
   test("contact page points users to X instead of an email address", () => {
     const pageSource = readPage("contact");
 
-    expect(pageSource).toContain("<title>Contact - DevToolsExport</title>");
+    expect(pageSource).toContain('title="Contact - DevToolsExport"');
     expect(pageSource).toContain("<h1>Contact</h1>");
     expect(pageSource).toContain("write me on X");
     expect(pageSource).toContain("https://x.com/mariusbolik");
@@ -44,7 +46,7 @@ describe("legal and contact pages", () => {
   test("terms page states simple service terms for shared bug reports", () => {
     const pageSource = readPage("terms");
 
-    expect(pageSource).toContain("<title>Terms of Service - DevToolsExport</title>");
+    expect(pageSource).toContain('title="Terms of Service - DevToolsExport"');
     expect(pageSource).toContain("<h1>Terms of Service</h1>");
     expect(pageSource).toContain("free Chrome extension");
     expect(pageSource).toContain("share links");
@@ -53,11 +55,18 @@ describe("legal and contact pages", () => {
   });
 
   test("uses the main blue accent for legal page eyebrow headings", () => {
+    expect(layoutSource).toContain("body.content-page .eyebrow {\n    margin: 0 0 10px;\n    color: var(--blue);");
+    expect(layoutSource).not.toContain(".eyebrow {\n    margin: 0 0 10px;\n    color: var(--green);");
+  });
+
+  test("uses the shared site layout for document chrome", () => {
     for (const pagePath of Object.values(pagePaths)) {
       const pageSource = readFileSync(pagePath, "utf8");
 
-      expect(pageSource).toContain(".eyebrow {\n    margin: 0 0 10px;\n    color: var(--blue);");
-      expect(pageSource).not.toContain(".eyebrow {\n    margin: 0 0 10px;\n    color: var(--green);");
+      expect(pageSource).toContain('import SiteLayout from "../layouts/SiteLayout.astro";');
+      expect(pageSource).toContain("showHeader={true}");
+      expect(pageSource).not.toContain("<!doctype html>");
+      expect(pageSource).not.toContain("<footer>");
     }
   });
 });

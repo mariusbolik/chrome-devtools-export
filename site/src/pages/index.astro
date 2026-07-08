@@ -1,4 +1,6 @@
 ---
+import SiteLayout from "../layouts/SiteLayout.astro";
+
 const description =
   "Create one-click bug reports with full Chrome DevTools snapshots, console logs, network requests, screenshots, browser context, and a free Chrome extension.";
 const chromeWebStoreUrl = "https://chromewebstore.google.com/detail/devtools-export/pbdgpdjgngniklhkclaafnekfidohhbm";
@@ -25,20 +27,13 @@ const softwareApplicationJsonLd = JSON.stringify(
 );
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-title" content="DevTools" />
-    <link rel="manifest" href="/site.webmanifest" />
-    <title>DevToolsExport - Share Chrome DevTools Snapshots to Fix Bugs Faster</title>
-    <meta name="description" content="Create one-click bug reports with full Chrome DevTools snapshots, console logs, network requests, screenshots, browser context, and a free Chrome extension." />
-    <link rel="canonical" href="https://devtoolsexport.com/" />
+<SiteLayout
+  title="DevToolsExport - Share Chrome DevTools Snapshots to Fix Bugs Faster"
+  description={description}
+  canonical="https://devtoolsexport.com/"
+  bodyClass="landing-page"
+>
+  <Fragment slot="head">
     <meta property="og:type" content="website" />
     <meta property="og:title" content="DevToolsExport - Share Chrome DevTools Snapshots to Fix Bugs Faster" />
     <meta property="og:description" content="Create one-click bug reports with full Chrome DevTools snapshots, console logs, network requests, screenshots, browser context, and a free Chrome extension." />
@@ -49,8 +44,8 @@ const softwareApplicationJsonLd = JSON.stringify(
     <meta name="twitter:description" content="Create one-click bug reports with full Chrome DevTools snapshots, console logs, network requests, screenshots, browser context, and a free Chrome extension." />
     <meta name="twitter:image" content="https://devtoolsexport.com/screenshots/chrome-export-panel.png" />
     <script is:inline type="application/ld+json" set:html={softwareApplicationJsonLd}></script>
-  </head>
-  <body>
+  </Fragment>
+
     <main>
       <section class="hero" aria-labelledby="hero-title">
         <nav class="topbar" aria-label="Primary">
@@ -283,14 +278,6 @@ const softwareApplicationJsonLd = JSON.stringify(
       </section>
     </main>
 
-    <footer>
-      <span>&copy; 2026 Eyloo GmbH. All rights reserved.</span>
-      <nav aria-label="Footer">
-        <a href="/privacy/">Privacy</a>
-        <a href="/contact/">Contact</a>
-        <a href="/terms/">Terms</a>
-      </nav>
-    </footer>
     <script is:inline>
       (() => {
         for (const carousel of document.querySelectorAll("[data-proof-carousel]")) {
@@ -323,55 +310,9 @@ const softwareApplicationJsonLd = JSON.stringify(
         }
       })();
     </script>
-  </body>
-</html>
+</SiteLayout>
 
 <style>
-  :root {
-    --bg: #1e1e1e;
-    --bg-light: #252526;
-    --bg-panel: #202324;
-    --bg-hover: #2a2d2e;
-    --border: #3c3c3c;
-    --border-strong: #4f5357;
-    --text: #cccccc;
-    --text-bright: #f3f3f3;
-    --text-dim: #8f8f8f;
-    --accent: #0e639c;
-    --accent-hover: #1177bb;
-    --green: #4ec9b0;
-    --yellow: #dcdcaa;
-    --red: #f48771;
-    --blue: #569cd6;
-    --shadow: rgba(0, 0, 0, 0.36);
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  html {
-    background: var(--bg);
-    color-scheme: dark;
-  }
-
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  }
-
-  a {
-    color: inherit;
-    text-decoration: none;
-  }
-
-  img {
-    display: block;
-    max-width: 100%;
-  }
-
   .hero {
     min-height: min(760px, 88svh);
     display: flex;
@@ -931,28 +872,6 @@ const softwareApplicationJsonLd = JSON.stringify(
     color: var(--blue);
   }
 
-  footer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 12px 20px;
-    padding: 22px 16px;
-    background: var(--bg-light);
-    color: var(--text-dim);
-  }
-
-  footer nav {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 12px;
-  }
-
-  footer a:hover {
-    color: var(--blue);
-  }
-
   @media (max-width: 880px) {
     .hero {
       min-height: auto;
@@ -984,10 +903,6 @@ const softwareApplicationJsonLd = JSON.stringify(
   }
 
   @media (max-width: 560px) {
-    body {
-      font-size: 12px;
-    }
-
     .topbar {
       padding: 10px 12px;
     }

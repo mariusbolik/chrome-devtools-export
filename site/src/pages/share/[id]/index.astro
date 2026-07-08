@@ -1,5 +1,6 @@
 ---
 import { env } from "cloudflare:workers";
+import PirschAnalytics from "../../../components/PirschAnalytics.astro";
 import { applyShareReadCacheHeaders } from "../../../lib/share-cache";
 import { loadSharedSnapshot, type ShareApiEnv } from "../../../lib/share-api";
 import { buildShareViewModel } from "../../../lib/share-view";
@@ -36,6 +37,7 @@ const formatDate = (value: string | undefined) => {
     <meta name="apple-mobile-web-app-title" content="DevTools" />
     <link rel="manifest" href="/site.webmanifest" />
     <title>{model ? model.seoTitle : "Snapshot not found"}</title>
+    <PirschAnalytics />
   </head>
   <body>
     {

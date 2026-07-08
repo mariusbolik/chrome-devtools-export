@@ -2,17 +2,20 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 
 const pageSource = readFileSync(new URL("../src/pages/index.astro", import.meta.url), "utf8");
+const layoutSource = readFileSync(new URL("../src/layouts/SiteLayout.astro", import.meta.url), "utf8");
 const lowerPageSource = pageSource.toLowerCase();
 
 describe("landing page", () => {
   test("defines SEO and social sharing metadata", () => {
-    expect(pageSource).toContain("<title>DevToolsExport - Share Chrome DevTools Snapshots to Fix Bugs Faster</title>");
-    expect(pageSource).toContain('<meta name="description"');
+    expect(pageSource).toContain('title="DevToolsExport - Share Chrome DevTools Snapshots to Fix Bugs Faster"');
+    expect(layoutSource).toContain("<title>{title}</title>");
+    expect(layoutSource).toContain('<meta name="description" content={description} />');
     expect(pageSource).toContain("one-click bug reports");
     expect(pageSource).toContain("DevTools snapshots");
     expect(pageSource).toContain("console logs");
     expect(pageSource).toContain("network requests");
-    expect(pageSource).toContain('<link rel="canonical" href="https://devtoolsexport.com/" />');
+    expect(pageSource).toContain('canonical="https://devtoolsexport.com/"');
+    expect(layoutSource).toContain('<link rel="canonical" href={canonical} />');
     expect(pageSource).toContain('<meta property="og:title"');
     expect(pageSource).toContain('<meta property="og:description"');
     expect(pageSource).toContain('<meta property="og:url" content="https://devtoolsexport.com/" />');
@@ -66,15 +69,23 @@ describe("landing page", () => {
     expect(pageSource).toContain("Marius Bolik");
     expect(pageSource).toContain('class="social-icon x-icon"');
     expect(pageSource).toContain('class="social-icon linkedin-icon"');
-    expect(pageSource).toContain("&copy; 2026 Eyloo GmbH. All rights reserved.");
+    expect(layoutSource).toContain("&copy; 2026 Eyloo GmbH. All rights reserved.");
     expect(pageSource).not.toContain(">x.com/mariusbolik</a>");
     expect(pageSource).not.toContain("<footer>\n      <span>Eyloo GmbH</span>");
   });
 
   test("links to privacy, contact, and terms pages from the footer", () => {
-    expect(pageSource).toContain('href="/privacy/"');
-    expect(pageSource).toContain('href="/contact/"');
-    expect(pageSource).toContain('href="/terms/"');
+    expect(layoutSource).toContain('href="/privacy/"');
+    expect(layoutSource).toContain('href="/contact/"');
+    expect(layoutSource).toContain('href="/terms/"');
+  });
+
+  test("uses the shared site layout for common page chrome", () => {
+    expect(pageSource).toContain('import SiteLayout from "../layouts/SiteLayout.astro";');
+    expect(pageSource).toContain("<SiteLayout");
+    expect(pageSource).not.toContain("<!doctype html>");
+    expect(layoutSource).toContain("<!doctype html>");
+    expect(layoutSource).toContain('<footer class="site-footer">');
   });
 
   test("alternates landing section background colors", () => {
